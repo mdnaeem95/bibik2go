@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { JWT } from 'google-auth-library';
 import { GoogleSpreadsheet, GoogleSpreadsheetRow } from 'google-spreadsheet';
 
@@ -173,7 +174,7 @@ export async function updateStaff(id: string, staff: Partial<NewStaff>) {
   const row = rows.find((r) => (r as any)._rawData[idCol] === id);
   if (!row) throw new Error(`Staff with id ${id} not found`);
 
-  headers.forEach((key, i) => {
+  headers.forEach((key) => {
     if (key !== 'id' && staff[key as keyof NewStaff] !== undefined) {
       (row as any)[key] = staff[key as keyof NewStaff];
     }
