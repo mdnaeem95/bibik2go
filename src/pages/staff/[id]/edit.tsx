@@ -12,6 +12,7 @@ import {
   Alert,
   CircularProgress,
 } from '@mui/material';
+import toast from 'react-hot-toast';
 
 import DashboardLayout from '@/components/DashboardLayout';
 import { sessionOptions, SessionUser } from '@/lib/session';
@@ -86,9 +87,12 @@ const EditStaffPage: NextPage<Props> = ({ staff }) => {
         const { error } = await res.json();
         throw new Error(error || 'Failed to update staff');
       }
+      toast.success(`Record for ${staff.name} edited successfully!`);
       router.push('/staff');
     } catch (err: unknown) {
-      setSubmitError(err instanceof Error ? err.message : String(err));
+      const message = err instanceof Error ? err.message : String(err);
+      toast.error(`Error: ${message}`);
+      setSubmitError(message);
     } finally {
       setLoading(false);
     }

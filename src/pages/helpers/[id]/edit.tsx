@@ -12,6 +12,7 @@ import {
   Alert,
   CircularProgress,
 } from '@mui/material';
+import toast from 'react-hot-toast';
 
 import DashboardLayout from '@/components/DashboardLayout';
 import { sessionOptions, SessionUser } from '@/lib/session';
@@ -96,9 +97,12 @@ const EditHelperPage: NextPage<Props> = ({ helper }) => {
         const { error } = await res.json();
         throw new Error(error || 'Failed to update helper');
       }
+      toast.success(`Record for ${helper.name} edited successfully!`);
       router.push('/helpers');
     } catch (err: unknown) {
-      setSubmitError(err instanceof Error ? err.message : String(err));
+      const message = err instanceof Error ? err.message : String(err);
+      toast.error(`Error: ${message}`);
+      setSubmitError(message);
     } finally {
       setLoading(false);
     }

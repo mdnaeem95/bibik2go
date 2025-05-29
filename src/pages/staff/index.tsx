@@ -19,6 +19,7 @@ import {
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
+import toast from 'react-hot-toast';
 
 import DashboardLayout from '@/components/DashboardLayout';
 import { sessionOptions, SessionUser } from '@/lib/session';
@@ -70,10 +71,13 @@ const Helpers: NextPage<Props> = () => {
     setDeletingId(id);
     try {
       await fetch(`/api/staff/${id}`, { method: 'DELETE' });
+      toast.success(`Staff record has been deleted!`)
       // Remove from local state
       setStaff((prev) => prev.filter((h) => h.id !== id));
     } catch (err) {
       console.error('Delete failed', err);
+      const message = err instanceof Error ? err.message : String(err);
+      toast.error(`Error: ${message}`);
     } finally {
       setDeletingId(null);
     }
@@ -82,7 +86,10 @@ const Helpers: NextPage<Props> = () => {
   // Now safe because helpers is always an array
   const filtered = staff.filter((s) => {
     if (typeof s.name !== 'string') return false;
-    return s.name.toLowerCase().includes(search.toLowerCase());
+    return s.name.toLowerCase().includes(search.toLowerCase()) ||
+      s.role.toLowerCase().includes(search.toLowerCase()) ||
+      s.email.toLowerCase().includes(search.toLowerCase()) ||
+      s.contact.toLowerCase().includes(search.toLowerCase())
   });
 
   return (

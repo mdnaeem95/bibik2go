@@ -12,6 +12,7 @@ import {
   Alert,
   CircularProgress,
 } from '@mui/material';
+import toast from 'react-hot-toast';
 
 import DashboardLayout from '@/components/DashboardLayout';
 import { sessionOptions, SessionUser } from '@/lib/session';
@@ -58,6 +59,10 @@ const NewHelperPage: NextPage = () => {
     setErrors((errs) => ({ ...errs, [field]: undefined }));
   };
 
+    const onCancel = () => {
+    router.push('/helpers');
+  };
+
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitError('');
@@ -82,9 +87,12 @@ const NewHelperPage: NextPage = () => {
         throw new Error(error || 'Failed to create helper');
       }
       // On success, go back to the list
+      toast.success('Helper added successfully!')
       router.push('/helpers');
     } catch (err: unknown) {
-      setSubmitError(err instanceof Error ? err.message : String(err));
+      const message = err instanceof Error ? err.message : String(err);
+      toast.error(`Error: ${message}`);
+      setSubmitError(message);
     } finally {
       setLoading(false);
     }
@@ -154,7 +162,8 @@ const NewHelperPage: NextPage = () => {
             fullWidth
           />
 
-          <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2, gap: 2 }}>
+            <Button onClick={onCancel} disabled={loading}>Cancel</Button>
             <Button
               type="submit"
               variant="contained"

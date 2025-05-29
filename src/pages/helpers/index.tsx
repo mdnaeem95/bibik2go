@@ -19,6 +19,7 @@ import {
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
+import toast from 'react-hot-toast';
 
 import DashboardLayout from '@/components/DashboardLayout';
 import { sessionOptions, SessionUser } from '@/lib/session';
@@ -70,10 +71,13 @@ const Helpers: NextPage<Props> = () => {
     setDeletingId(id);
     try {
       await fetch(`/api/helpers/${id}`, { method: 'DELETE' });
+      toast.success(`Helper record has been deleted!`)
       // Remove from local state
       setHelpers((prev) => prev.filter((h) => h.id !== id));
     } catch (err) {
       console.error('Delete failed', err);
+      const message = err instanceof Error ? err.message : String(err);
+      toast.error(`Error: ${message}`);
     } finally {
       setDeletingId(null);
     }
@@ -82,7 +86,10 @@ const Helpers: NextPage<Props> = () => {
   // Now safe because helpers is always an array
   const filtered = helpers.filter((h) => {
     if (typeof h.name !== 'string') return false;
-    return h.name.toLowerCase().includes(search.toLowerCase());
+    return h.name.toLowerCase().includes(search.toLowerCase()) ||
+    h.currentEmployer.toLowerCase().includes(search.toLowerCase()) ||
+    h.eaOfficer.toLowerCase().includes(search.toLowerCase()) ||
+    h.problem.toLowerCase().includes(search.toLowerCase())
   });
 
   return (
