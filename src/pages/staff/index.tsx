@@ -20,6 +20,7 @@ import {
 import EditIcon from '@mui/icons-material/Edit';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import DeleteIcon from '@mui/icons-material/Delete';
+import TableSortLabel from '@mui/material/TableSortLabel';
 import toast from 'react-hot-toast';
 
 import DashboardLayout from '@/components/DashboardLayout';
@@ -39,6 +40,8 @@ const Helpers: NextPage<Props> = () => {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [viewingId, setViewingId] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<keyof Staff>('name');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
   const fetchStaff = async () => {
     setLoading(true);
@@ -56,10 +59,6 @@ const Helpers: NextPage<Props> = () => {
       setLoading(false);
     }
   }
-
-  useEffect(() => {
-    fetchStaff();
-  }, []);
 
   const handleAdd = () => {
     router.push('/staff/new');
@@ -91,6 +90,21 @@ const Helpers: NextPage<Props> = () => {
     setViewingId(id);
     router.push(`/staff/${id}`);
   };
+
+  const handleSort = (column: keyof Staff) => {
+    if (sortBy === column) {
+      // toggle between ascending and descending
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      // new column selected
+      setSortBy(column);
+      setSortOrder('asc');
+    }
+  };
+
+  useEffect(() => {
+    fetchStaff();
+  }, []);
 
   // Now safe because helpers is always an array
   const filtered = staff.filter((s) => {
@@ -139,7 +153,11 @@ const Helpers: NextPage<Props> = () => {
           <Table>
             <TableHead>
               <TableRow>
-                <TableCell>Name</TableCell>
+                <TableCell sortDirection={sortBy === 'name' ? sortOrder : false}>
+                  <TableSortLabel active={sortBy === 'name'} direction={sortBy === 'name' ? sortOrder : 'asc'} onClick={() => handleSort('name')}>
+                    Name
+                  </TableSortLabel>
+                </TableCell>
                 <TableCell>Role</TableCell>
                 <TableCell>Email</TableCell>
                 <TableCell>Contact</TableCell>
@@ -147,7 +165,14 @@ const Helpers: NextPage<Props> = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {filtered.map((s) => (
+              {[...filtered].sort((a, b) => {
+                const aValue = a[sortBy] ?? '';
+                const bValue = b[sortBy] ?? '';
+                return sortOrder === 'asc'
+                  ? String(aValue).localeCompare(String(bValue))
+                  : String(bValue).localeCompare(String(aValue))
+              }).map((s) =>
+              (
                 <TableRow key={s.id} hover>
                   <TableCell>{s.name}</TableCell>
                   <TableCell>{s.role}</TableCell>
