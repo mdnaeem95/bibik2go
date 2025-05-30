@@ -41,6 +41,8 @@ interface Props {
 
 const EditStaffPage: NextPage<Props> = ({ staff }) => {
   const router = useRouter();
+  const returnTo = (router.query.returnTo as string) || '/staff';
+
   const [form, setForm] = useState<FormData>({
     name: staff.name,
     role: staff.role,
@@ -99,7 +101,7 @@ const EditStaffPage: NextPage<Props> = ({ staff }) => {
   };
 
   const onCancel = () => {
-    router.push('/staff');
+    router.push(returnTo);
   };
 
   return (

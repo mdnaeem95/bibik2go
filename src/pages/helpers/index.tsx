@@ -19,6 +19,7 @@ import {
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
+import VisibilityIcon from '@mui/icons-material/Visibility';
 import toast from 'react-hot-toast';
 
 import DashboardLayout from '@/components/DashboardLayout';
@@ -36,6 +37,8 @@ const Helpers: NextPage<Props> = () => {
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [viewingId, setViewingId] = useState<string | null>(null);
 
   const fetchHelpers = async () => {
     setLoading(true);
@@ -63,6 +66,7 @@ const Helpers: NextPage<Props> = () => {
   };
 
   const handleEdit = (id: string) => {
+    setEditingId(id);
     router.push(`/helpers/${id}/edit`);
   };
 
@@ -81,6 +85,11 @@ const Helpers: NextPage<Props> = () => {
     } finally {
       setDeletingId(null);
     }
+  };
+
+  const handleView = (id: string) => {
+    setViewingId(id);
+    router.push(`/helpers/${id}`);
   };
 
   // Now safe because helpers is always an array
@@ -115,6 +124,16 @@ const Helpers: NextPage<Props> = () => {
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
           <CircularProgress />
         </Box>
+      ) : filtered.length === 0 ? (
+        <Paper elevation={1} sx={{ p: 4, textAlign: 'center' }}>
+          <Typography variant='h6' gutterBottom>No helper found.</Typography>
+          <Typography variant="body2" color="textSecondary">
+            Add your first helper to get started.
+          </Typography>
+          <Button variant='contained' sx={{ mt: 2 }} onClick={handleAdd}>
+            Add Helper
+          </Button>
+        </Paper>
       ) : (
         <TableContainer component={Paper} elevation={1}>
           <Table>
@@ -141,8 +160,12 @@ const Helpers: NextPage<Props> = () => {
                     ${h.outstandingLoan.toLocaleString()}
                   </TableCell>
                   <TableCell align='center'>
-                    <IconButton size="small" onClick={() => handleEdit(h.id)}>
-                      <EditIcon fontSize='inherit' />
+                    <IconButton size="small" onClick={() => handleEdit(h.id)} disabled={editingId === h.id}>
+                      {editingId === h.id ? (
+                        <CircularProgress size={20} />
+                      ): (
+                        <EditIcon fontSize='inherit' />
+                      )}                      
                     </IconButton>
                     <IconButton size="small" onClick={() => handleDelete(h.id)} disabled={deletingId === h.id}>
                       {deletingId === h.id ? (
@@ -151,16 +174,12 @@ const Helpers: NextPage<Props> = () => {
                         <DeleteIcon fontSize='inherit' />
                       )}
                     </IconButton>
+                    <IconButton size="small" onClick={() => handleView(h.id)} disabled={viewingId === h.id}>
+                      {viewingId === h.id ? <CircularProgress size={20} /> : <VisibilityIcon fontSize="inherit" />}
+                    </IconButton>
                   </TableCell>
                 </TableRow>
               ))}
-              {filtered.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={6} align="center">
-                    No helpers found.
-                  </TableCell>
-                </TableRow>
-              )}
             </TableBody>
           </Table>
         </TableContainer>

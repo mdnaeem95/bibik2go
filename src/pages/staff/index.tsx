@@ -18,6 +18,7 @@ import {
   IconButton,
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
+import VisibilityIcon from '@mui/icons-material/Visibility';
 import DeleteIcon from '@mui/icons-material/Delete';
 import toast from 'react-hot-toast';
 
@@ -36,6 +37,8 @@ const Helpers: NextPage<Props> = () => {
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [viewingId, setViewingId] = useState<string | null>(null);
 
   const fetchStaff = async () => {
     setLoading(true);
@@ -63,7 +66,8 @@ const Helpers: NextPage<Props> = () => {
   };
 
   const handleEdit = (id: string) => {
-    router.push(`/staff/${id}/edit`);
+    setEditingId(id);
+    router.push(`/staff/${id}/edit?returnTo=/staff`);
   };
 
   const handleDelete = async (id: string) => {
@@ -81,6 +85,11 @@ const Helpers: NextPage<Props> = () => {
     } finally {
       setDeletingId(null);
     }
+  };
+
+  const handleView = (id: string) => {
+    setViewingId(id);
+    router.push(`/staff/${id}`);
   };
 
   // Now safe because helpers is always an array
@@ -115,6 +124,16 @@ const Helpers: NextPage<Props> = () => {
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
           <CircularProgress />
         </Box>
+      ) : filtered.length === 0 ? (
+        <Paper elevation={1} sx={{ p: 4, textAlign: 'center' }}>
+          <Typography variant="h6" gutterBottom>No staff found.</Typography>
+          <Typography variant="body2" color="text.secondary">
+            Add your first staff member to get started.
+          </Typography>
+          <Button variant="contained" sx={{ mt: 2 }} onClick={handleAdd}>
+            Add Staff
+          </Button>
+        </Paper>
       ) : (
         <TableContainer component={Paper} elevation={1}>
           <Table>
@@ -128,33 +147,25 @@ const Helpers: NextPage<Props> = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {filtered.map((h) => (
-                <TableRow key={h.id} hover>
-                  <TableCell>{h.name}</TableCell>
-                  <TableCell>{h.role}</TableCell>
-                  <TableCell>{h.email}</TableCell>
-                  <TableCell>{h.contact}</TableCell>
+              {filtered.map((s) => (
+                <TableRow key={s.id} hover>
+                  <TableCell>{s.name}</TableCell>
+                  <TableCell>{s.role}</TableCell>
+                  <TableCell>{s.email}</TableCell>
+                  <TableCell>{s.contact}</TableCell>
                   <TableCell align='center'>
-                    <IconButton size="small" onClick={() => handleEdit(h.id)}>
-                      <EditIcon fontSize='inherit' />
+                    <IconButton size="small" onClick={() => handleEdit(s.id)} disabled={editingId === s.id}>
+                      {editingId === s.id ? <CircularProgress size={20} /> : <EditIcon fontSize='inherit' />}
                     </IconButton>
-                    <IconButton size="small" onClick={() => handleDelete(h.id)} disabled={deletingId === h.id}>
-                      {deletingId === h.id ? (
-                        <CircularProgress size={20} />
-                      ) : (
-                        <DeleteIcon fontSize='inherit' />
-                      )}
+                    <IconButton size="small" onClick={() => handleDelete(s.id)} disabled={deletingId === s.id}>
+                      {deletingId === s.id ? <CircularProgress size={20} /> : <DeleteIcon fontSize='inherit' />}
+                    </IconButton>
+                    <IconButton size="small" onClick={() => handleView(s.id)} disabled={viewingId === s.id}>
+                      {viewingId === s.id ? <CircularProgress size={20} /> : <VisibilityIcon fontSize="inherit" />}
                     </IconButton>
                   </TableCell>
                 </TableRow>
               ))}
-              {filtered.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={6} align="center">
-                    No staff found.
-                  </TableCell>
-                </TableRow>
-              )}
             </TableBody>
           </Table>
         </TableContainer>

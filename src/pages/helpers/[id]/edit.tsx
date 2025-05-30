@@ -45,6 +45,7 @@ interface Props {
 
 const EditHelperPage: NextPage<Props> = ({ helper }) => {
   const router = useRouter();
+  const returnTo = (router.query.returnTo as string) || '/helpers';
   const [form, setForm] = useState<FormData>({
     name: helper.name,
     currentEmployer: helper.currentEmployer,
@@ -109,7 +110,7 @@ const EditHelperPage: NextPage<Props> = ({ helper }) => {
   };
 
   const onCancel = () => {
-    router.push('/helpers');
+    router.push(returnTo);
   };
 
   return (

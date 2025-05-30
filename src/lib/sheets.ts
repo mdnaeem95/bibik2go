@@ -19,6 +19,8 @@ async function getSheet() {
   return sheet;
 }
 
+export type Helper = RawHelperRow;
+
 // 3) Raw sheet row shape (all strings)
 export type RawHelperRow = {
   id: string;
@@ -116,6 +118,8 @@ export async function deleteHelper(id: string) {
 }
 
 // --------- STAFF ----------------
+export type Staff = RawStaffRow;
+
 export type RawStaffRow = {
   id: string;
   name: string;
