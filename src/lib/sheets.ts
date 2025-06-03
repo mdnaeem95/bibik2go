@@ -15,7 +15,6 @@ const doc = new GoogleSpreadsheet(process.env.SHEET_ID!, jwtClient);
 async function getSheet() {
   await doc.loadInfo();
   const sheet = doc.sheetsByIndex[0];
-
   return sheet;
 }
 
@@ -26,7 +25,7 @@ export type RawHelperRow = {
   id: string;
   name: string;
   currentEmployer: string;
-  problem: string;
+  problem: string; // Will now show latest incident
   totalEmployers: string;
   eaOfficer: string;
   outstandingLoan: string;
@@ -81,7 +80,7 @@ export async function updateHelper(id: string, helper: Partial<NewHelper>) {
   const headers = sheet.headerValues;
   const idCol = headers.indexOf('id');
 
-  if (idCol < 0) throw new Error('Sheet is missing “id” column');
+  if (idCol < 0) throw new Error('Sheet is missing "id" column');
 
   const rows = await sheet.getRows();
 
@@ -107,7 +106,7 @@ export async function deleteHelper(id: string) {
   const headers = sheet.headerValues;
   const rows = await sheet.getRows();
   const idCol = headers.indexOf('id');
-  if (idCol < 0) throw new Error('Sheet is missing “id” column');
+  if (idCol < 0) throw new Error('Sheet is missing "id" column');
 
   const row = rows.find(
     (r) => (r as any)._rawData[idCol] === id
@@ -172,7 +171,7 @@ export async function updateStaff(id: string, staff: Partial<NewStaff>) {
   await sheet.loadHeaderRow();
   const headers = sheet.headerValues;
   const idCol = headers.indexOf('id');
-  if (idCol < 0) throw new Error('Sheet is missing “id” column');
+  if (idCol < 0) throw new Error('Sheet is missing "id" column');
 
   const rows = await sheet.getRows();
   const row = rows.find((r) => (r as any)._rawData[idCol] === id);
@@ -196,4 +195,158 @@ export async function deleteStaff(id: string) {
   const row = rows.find((r) => (r as any)._rawData[idCol] === id);
   if (!row) throw new Error(`Staff with id ${id} not found`);
   await row.delete();
+}
+
+// --------- INCIDENTS ----------------
+
+export type Incident = RawIncidentRow;
+
+export type RawIncidentRow = {
+  id: string;
+  helperId: string;
+  incidentDate: string;
+  description: string;
+  severity: string;
+  reportedBy: string;
+  status: string;
+  resolution: string;
+  createdAt: string;
+};
+
+export interface NewIncident {
+  helperId: string;
+  incidentDate: string;
+  description: string;
+  severity: 'Low' | 'Medium' | 'High' | 'Critical';
+  reportedBy: string;
+  status: 'Open' | 'Resolved' | 'Under Review';
+  resolution?: string;
+}
+
+export async function getIncidentsSheet() {
+  await doc.loadInfo();
+  let sheet = doc.sheetsByTitle['Incidents'];
+  
+  // Create the sheet if it doesn't exist
+  if (!sheet) {
+    sheet = await doc.addSheet({
+      title: 'Incidents',
+      headerValues: [
+        'id',
+        'helperId', 
+        'incidentDate',
+        'description',
+        'severity',
+        'reportedBy',
+        'status',
+        'resolution',
+        'createdAt'
+      ]
+    });
+  }
+  return sheet;
+}
+
+export async function getAllIncidents(): Promise<RawIncidentRow[]> {
+  const sheet = await getIncidentsSheet();
+  await sheet.loadHeaderRow();
+  const rows = await sheet.getRows();
+  const headers = sheet.headerValues;
+
+  return rows.map((row) => {
+    const raw: string[] = (row as any)._rawData;
+    const obj: any = {};
+    headers.forEach((h, idx) => {
+      obj[h] = raw[idx] ?? '';
+    });
+    return obj as RawIncidentRow;
+  });
+}
+
+export async function getIncidentsByHelperId(helperId: string): Promise<RawIncidentRow[]> {
+  const allIncidents = await getAllIncidents();
+  return allIncidents.filter(incident => incident.helperId === helperId);
+}
+
+export async function addIncident(incident: NewIncident): Promise<RawIncidentRow> {
+  const sheet = await getIncidentsSheet();
+  const row = await sheet.addRow({
+    id: Date.now().toString(),
+    helperId: incident.helperId,
+    incidentDate: incident.incidentDate,
+    description: incident.description,
+    severity: incident.severity,
+    reportedBy: incident.reportedBy,
+    status: incident.status,
+    resolution: incident.resolution || '',
+    createdAt: new Date().toISOString(),
+  });
+
+  // Update helper's problem field with latest incident
+  await updateHelperLatestIncident(incident.helperId, incident.description);
+
+  return row as any;
+}
+
+export async function updateIncident(id: string, incident: Partial<NewIncident>) {
+  const sheet = await getIncidentsSheet();
+  await sheet.loadHeaderRow();
+  const headers = sheet.headerValues;
+  const idCol = headers.indexOf('id');
+  if (idCol < 0) throw new Error('Sheet is missing "id" column');
+
+  const rows = await sheet.getRows();
+  const row = rows.find((r) => (r as any)._rawData[idCol] === id);
+  if (!row) throw new Error(`Incident with id ${id} not found`);
+
+  // Update fields
+  if (incident.incidentDate !== undefined) row.set('incidentDate', incident.incidentDate);
+  if (incident.description !== undefined) row.set('description', incident.description);
+  if (incident.severity !== undefined) row.set('severity', incident.severity);
+  if (incident.reportedBy !== undefined) row.set('reportedBy', incident.reportedBy);
+  if (incident.status !== undefined) row.set('status', incident.status);
+  if (incident.resolution !== undefined) row.set('resolution', incident.resolution);
+
+  await row.save();
+
+  // If description was updated, update helper's latest incident
+  if (incident.description !== undefined && incident.helperId) {
+    await updateHelperLatestIncident(incident.helperId, incident.description);
+  }
+}
+
+export async function deleteIncident(id: string) {
+  const sheet = await getIncidentsSheet();
+  await sheet.loadHeaderRow();
+  const headers = sheet.headerValues;
+  const idCol = headers.indexOf('id');
+  const rows = await sheet.getRows();
+  const row = rows.find((r) => (r as any)._rawData[idCol] === id);
+  if (!row) throw new Error(`Incident with id ${id} not found`);
+
+  const helperId = (row as any)._rawData[headers.indexOf('helperId')];
+  await row.delete();
+
+  // Update helper's problem field with their most recent remaining incident
+  const remainingIncidents = await getIncidentsByHelperId(helperId);
+  if (remainingIncidents.length > 0) {
+    // Sort by createdAt desc and get the latest
+    const sortedIncidents = remainingIncidents.sort((a, b) => 
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+    await updateHelperLatestIncident(helperId, sortedIncidents[0].description);
+  } else {
+    // No incidents left, clear the problem field
+    await updateHelper(helperId, { problem: 'No recent incidents' });
+  }
+}
+
+// Helper function to update helper's problem field with latest incident
+async function updateHelperLatestIncident(helperId: string, latestIncidentDescription: string) {
+  try {
+    await updateHelper(helperId, { problem: `Latest: ${latestIncidentDescription}` });
+  } catch (error) {
+    console.error('Failed to update helper latest incident:', error);
+    // Don't throw - incident creation should still succeed even if helper update fails
+  }
 }

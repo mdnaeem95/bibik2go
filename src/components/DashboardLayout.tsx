@@ -22,6 +22,7 @@ import {
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import GroupIcon from '@mui/icons-material/Group';
 import BadgeIcon from '@mui/icons-material/Badge';
+import ReportProblemIcon from '@mui/icons-material/ReportProblem';
 import SettingsIcon from '@mui/icons-material/Settings';
 import LogoutIcon from '@mui/icons-material/Logout';
 import SearchIcon from '@mui/icons-material/Search';
@@ -36,6 +37,7 @@ interface DashboardLayoutProps {
 const navItems = [
   { text: 'Dashboard', href: '/', icon: <DashboardIcon /> },
   { text: 'Helpers', href: '/helpers', icon: <GroupIcon /> },
+  { text: 'Incidents', href: '/incidents', icon: <ReportProblemIcon /> },
   { text: 'Staff', href: '/staff', icon: <BadgeIcon /> },
   { text: 'Settings', href: '/settings', icon: <SettingsIcon /> },
 ];
