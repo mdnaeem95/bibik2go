@@ -1,3 +1,4 @@
+// src/pages/incidents/add.tsx (Enhanced version)
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
@@ -26,14 +27,17 @@ import {
   StepLabel,
   Fade,
   Chip,
+  Divider,
 } from '@mui/material';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import PersonIcon from '@mui/icons-material/Person';
 import DescriptionIcon from '@mui/icons-material/Description';
 import PriorityHighIcon from '@mui/icons-material/PriorityHigh';
+import CameraAltIcon from '@mui/icons-material/CameraAlt';
 import toast from 'react-hot-toast';
 
 import DashboardLayout from '@/components/DashboardLayout';
+import MediaUpload, { MediaFile } from '@/components/MediaUpload';
 import { sessionOptions, SessionUser } from '@/lib/session';
 import { getAllHelpers } from '@/lib/sheets';
 
@@ -52,6 +56,7 @@ interface FormData {
   reportedBy: string;
   status: 'Open' | 'Resolved' | 'Under Review';
   resolution: string;
+  mediaFiles: MediaFile[];
 }
 
 interface Props {
@@ -59,7 +64,7 @@ interface Props {
   helpers: Helper[];
 }
 
-const steps = ['Select Helper', 'Incident Details', 'Review & Submit'];
+const steps = ['Select Helper', 'Incident Details', 'Add Media', 'Review & Submit'];
 
 const severityOptions = [
   { value: 'Low', color: 'success', description: 'Minor issue, no immediate action required' },
@@ -82,18 +87,18 @@ const AddIncidentPage: NextPage<Props> = ({ user, helpers }) => {
   const [form, setForm] = useState<FormData>({
     helperId: preselectedHelperId as string || '',
     helperName: '',
-    incidentDate: new Date().toISOString().split('T')[0], // Today's date
+    incidentDate: new Date().toISOString().split('T')[0],
     description: '',
     severity: 'Medium',
     reportedBy: user.username,
     status: 'Open',
     resolution: '',
+    mediaFiles: [],
   });
   const [errors, setErrors] = useState<Partial<FormData>>({});
   const [submitError, setSubmitError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Find helper name when helperId changes
   useEffect(() => {
     if (form.helperId) {
       const helper = helpers.find(h => h.id === form.helperId);
@@ -119,7 +124,7 @@ const AddIncidentPage: NextPage<Props> = ({ user, helpers }) => {
       if (!form.reportedBy.trim()) errs.reportedBy = 'Reporter name is required';
     }
 
-    if (currentStep >= 2) {
+    if (currentStep >= 3) {
       if (form.status === 'Resolved' && !form.resolution.trim()) {
         errs.resolution = 'Resolution is required when status is resolved';
       }
@@ -141,6 +146,10 @@ const AddIncidentPage: NextPage<Props> = ({ user, helpers }) => {
       helperName: helper?.name || ''
     }));
     setErrors((errs) => ({ ...errs, helperId: undefined }));
+  };
+
+  const onMediaFilesChange = (files: MediaFile[]) => {
+    setForm(prev => ({ ...prev, mediaFiles: files }));
   };
 
   const handleNext = () => {
@@ -175,13 +184,15 @@ const AddIncidentPage: NextPage<Props> = ({ user, helpers }) => {
           reportedBy: form.reportedBy,
           status: form.status,
           resolution: form.resolution || undefined,
+          mediaUrls: form.mediaFiles.map(file => file.url), // Save URLs to incident
+          mediaFiles: form.mediaFiles, // Full media file info
         }),
       });
       if (!res.ok) {
         const { error } = await res.json();
         throw new Error(error || 'Failed to create incident');
       }
-      toast.success('Incident added successfully!');
+      toast.success('Incident added successfully with media files!');
       router.push(`/helpers/${form.helperId}`);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
@@ -198,7 +209,6 @@ const AddIncidentPage: NextPage<Props> = ({ user, helpers }) => {
 
   return (
     <DashboardLayout>
-      {/* Breadcrumbs */}
       <Breadcrumbs 
         separator={<NavigateNextIcon fontSize="small" />}
         sx={{ mb: 3 }}
@@ -220,11 +230,10 @@ const AddIncidentPage: NextPage<Props> = ({ user, helpers }) => {
             Report New Incident
           </Typography>
           <Typography variant="body1" color="text.secondary">
-            Document and track helper-related incidents for proper management
+            Document and track helper-related incidents with photos and videos
           </Typography>
         </Box>
 
-        {/* Stepper */}
         <Stepper activeStep={activeStep} sx={{ mb: 4 }}>
           {steps.map((label) => (
             <Step key={label}>
@@ -401,8 +410,53 @@ const AddIncidentPage: NextPage<Props> = ({ user, helpers }) => {
             </Fade>
           )}
 
-          {/* Step 3: Review & Submit */}
+          {/* Step 3: Add Media */}
           {activeStep === 2 && (
+            <Fade in={true}>
+              <Box>
+                <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <CameraAltIcon /> Add Photos & Videos
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                  Upload photos and videos related to this incident. Files will be stored securely in Google Drive.
+                </Typography>
+
+                <Card variant="outlined" sx={{ mb: 3 }}>
+                  <CardContent>
+                    <MediaUpload
+                      value={form.mediaFiles}
+                      onChange={onMediaFilesChange}
+                      maxFiles={10}
+                      maxSizePerFile={50 * 1024 * 1024} // 50MB
+                    />
+                  </CardContent>
+                </Card>
+
+                {form.mediaFiles.length > 0 && (
+                  <Alert severity="info" sx={{ mb: 3 }}>
+                    <Typography variant="body2">
+                      <strong>{form.mediaFiles.length} file(s) uploaded.</strong> These will be linked to the incident for future reference.
+                    </Typography>
+                  </Alert>
+                )}
+
+                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <Button onClick={handleBack}>
+                    Back
+                  </Button>
+                  <Button 
+                    onClick={handleNext} 
+                    variant="contained"
+                  >
+                    Continue
+                  </Button>
+                </Box>
+              </Box>
+            </Fade>
+          )}
+
+          {/* Step 4: Review & Submit */}
+          {activeStep === 3 && (
             <Fade in={true}>
               <Box>
                 <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -463,7 +517,7 @@ const AddIncidentPage: NextPage<Props> = ({ user, helpers }) => {
                     <Typography variant="subtitle1" gutterBottom fontWeight={600}>
                       Incident Summary
                     </Typography>
-                    <Box sx={{ display: 'grid', gap: 1 }}>
+                    <Box sx={{ display: 'grid', gap: 1, mb: 2 }}>
                       <Typography variant="body2">
                         <strong>Helper:</strong> {selectedHelper?.name} ({selectedHelper?.currentEmployer})
                       </Typography>
@@ -483,6 +537,25 @@ const AddIncidentPage: NextPage<Props> = ({ user, helpers }) => {
                         <strong>Description:</strong> {form.description}
                       </Typography>
                     </Box>
+                    
+                    {form.mediaFiles.length > 0 && (
+                      <>
+                        <Divider sx={{ my: 2 }} />
+                        <Typography variant="body2">
+                          <strong>Media Files:</strong> {form.mediaFiles.length} file(s) uploaded
+                        </Typography>
+                        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mt: 1 }}>
+                          {form.mediaFiles.map((file) => (
+                            <Chip
+                              key={file.id}
+                              label={`${file.type === 'image' ? '📸' : '🎥'} ${file.name.substring(0, 20)}${file.name.length > 20 ? '...' : ''}`}
+                              size="small"
+                              variant="outlined"
+                            />
+                          ))}
+                        </Box>
+                      </>
+                    )}
                   </CardContent>
                 </Card>
 

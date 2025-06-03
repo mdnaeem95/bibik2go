@@ -189,7 +189,7 @@ const IncidentsPage: NextPage<Props> = ({ helpers }) => {
           </Grid>
 
           <Grid>
-            <FormControl size="small" fullWidth>
+            <FormControl size="small" sx={{ width: 110 }}>
               <InputLabel>Severity</InputLabel>
               <Select
                 value={severityFilter}
@@ -206,7 +206,7 @@ const IncidentsPage: NextPage<Props> = ({ helpers }) => {
           </Grid>
 
           <Grid>
-            <FormControl size="small" fullWidth>
+            <FormControl size="small" sx={{ width: 110 }}>
               <InputLabel>Status</InputLabel>
               <Select
                 value={statusFilter}
