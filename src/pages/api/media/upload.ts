@@ -4,7 +4,6 @@ import { google } from 'googleapis';
 import { JWT } from 'google-auth-library';
 import formidable from 'formidable';
 import fs from 'fs';
-// import path from 'path';
 
 // Disable Next.js body parsing for file uploads
 export const config = {
@@ -27,11 +26,81 @@ const getDriveClient = () => {
   return google.drive({ version: 'v3', auth });
 };
 
-// Create or get the incident media folder
-const getOrCreateMediaFolder = async (drive: any, incidentId?: string) => {
+// Create or get the incident media folder with better structure
+const getOrCreateMediaFolder = async (drive: any, incidentId?: string, helperName?: string, helperCurrentEmployer?: string) => {
+  // If we have a shared incident media folder, use it as the base
+  if (process.env.INCIDENT_MEDIA_FOLDER_ID) {
+    let currentFolderId = process.env.INCIDENT_MEDIA_FOLDER_ID;
+    
+    // Create helper-specific folder if we have helper info
+    if (helperName) {
+      const sanitizedHelperName = helperName.replace(/[^a-zA-Z0-9\s-]/g, '').replace(/\s+/g, '_');
+      const helperFolderName = helperCurrentEmployer 
+        ? `${sanitizedHelperName}_${helperCurrentEmployer.replace(/[^a-zA-Z0-9\s-]/g, '').replace(/\s+/g, '_')}`
+        : sanitizedHelperName;
+      
+      // Check if helper folder exists
+      const existingHelperFolders = await drive.files.list({
+        q: `name='${helperFolderName}' and mimeType='application/vnd.google-apps.folder' and '${currentFolderId}' in parents and trashed=false`,
+        fields: 'files(id, name)',
+      });
+
+      if (existingHelperFolders.data.files && existingHelperFolders.data.files.length > 0) {
+        currentFolderId = existingHelperFolders.data.files[0].id;
+      } else {
+        // Create helper folder
+        const helperFolderMetadata = {
+          name: helperFolderName,
+          mimeType: 'application/vnd.google-apps.folder',
+          parents: [currentFolderId],
+        };
+
+        const helperFolder = await drive.files.create({
+          requestBody: helperFolderMetadata,
+          fields: 'id',
+        });
+
+        currentFolderId = helperFolder.data.id;
+      }
+    }
+    
+    // Create incident-specific subfolder if we have incident ID
+    if (incidentId) {
+      const incidentDate = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+      const incidentFolderName = `Incident_${incidentId}_${incidentDate}`;
+      
+      // Check if incident subfolder exists
+      const existingIncidentFolders = await drive.files.list({
+        q: `name='${incidentFolderName}' and mimeType='application/vnd.google-apps.folder' and '${currentFolderId}' in parents and trashed=false`,
+        fields: 'files(id, name)',
+      });
+
+      if (existingIncidentFolders.data.files && existingIncidentFolders.data.files.length > 0) {
+        return existingIncidentFolders.data.files[0].id;
+      }
+
+      // Create incident-specific subfolder
+      const incidentFolderMetadata = {
+        name: incidentFolderName,
+        mimeType: 'application/vnd.google-apps.folder',
+        parents: [currentFolderId],
+      };
+
+      const incidentFolder = await drive.files.create({
+        requestBody: incidentFolderMetadata,
+        fields: 'id',
+      });
+
+      return incidentFolder.data.id;
+    }
+    
+    // Return current folder ID (helper folder or base folder)
+    return currentFolderId;
+  }
+
+  // Fallback: create folder in root (shouldn't happen with proper setup)
   const folderName = incidentId ? `Incident_${incidentId}_Media` : 'IncidentMedia';
   
-  // First, try to find existing folder
   const existingFolders = await drive.files.list({
     q: `name='${folderName}' and mimeType='application/vnd.google-apps.folder' and trashed=false`,
     fields: 'files(id, name)',
@@ -41,11 +110,9 @@ const getOrCreateMediaFolder = async (drive: any, incidentId?: string) => {
     return existingFolders.data.files[0].id;
   }
 
-  // Create new folder if it doesn't exist
   const folderMetadata = {
     name: folderName,
     mimeType: 'application/vnd.google-apps.folder',
-    parents: process.env.GOOGLE_DRIVE_PARENT_FOLDER_ID ? [process.env.GOOGLE_DRIVE_PARENT_FOLDER_ID] : undefined,
   };
 
   const folder = await drive.files.create({
@@ -86,8 +153,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const [fields, files] = await form.parse(req);
     const file = Array.isArray(files.file) ? files.file[0] : files.file;
-    //const fileType = Array.isArray(fields.type) ? fields.type[0] : fields.type;
     const incidentId = Array.isArray(fields.incidentId) ? fields.incidentId[0] : fields.incidentId;
+    const helperName = Array.isArray(fields.helperName) ? fields.helperName[0] : fields.helperName;
+    const helperCurrentEmployer = Array.isArray(fields.helperCurrentEmployer) ? fields.helperCurrentEmployer[0] : fields.helperCurrentEmployer;
+    const description = Array.isArray(fields.description) ? fields.description[0] : fields.description;
 
     if (!file) {
       return res.status(400).json({ error: 'No file uploaded' });
@@ -101,18 +170,43 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({ error: 'Only image and video files are allowed' });
     }
 
-    // Get or create the media folder
-    const folderId = await getOrCreateMediaFolder(drive, incidentId);
+    // Validate file size (additional check)
+    const maxSize = 50 * 1024 * 1024; // 50MB
+    if (file.size > maxSize) {
+      return res.status(400).json({ error: 'File size exceeds 50MB limit' });
+    }
 
-    // Prepare file metadata
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    //const fileExtension = path.extname(file.originalFilename || '');
-    const sanitizedName = `${timestamp}_${(file.originalFilename || 'upload').replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+    // Get or create the media folder
+    const folderId = await getOrCreateMediaFolder(drive, incidentId, helperName, helperCurrentEmployer);
+
+    // Create a more intuitive filename
+    const currentDate = new Date();
+    const dateString = currentDate.toISOString().split('T')[0]; // YYYY-MM-DD
+    const timeString = currentDate.toTimeString().split(' ')[0].replace(/:/g, '-'); // HH-MM-SS
+    
+    // Get file extension
+    const originalName = file.originalFilename || 'upload';
+    const fileExtension = originalName.split('.').pop() || '';
+    const baseName = originalName.split('.').slice(0, -1).join('.') || 'upload';
+    
+    // Create descriptive filename
+    let fileName = '';
+    if (helperName && incidentId) {
+      const sanitizedHelperName = helperName.replace(/[^a-zA-Z0-9\s-]/g, '').replace(/\s+/g, '_');
+      const shortDescription = description 
+        ? `_${description.replace(/[^a-zA-Z0-9\s-]/g, '').replace(/\s+/g, '_').substring(0, 30)}`
+        : '';
+      fileName = `${dateString}_${timeString}_${sanitizedHelperName}_Incident${incidentId}${shortDescription}.${fileExtension}`;
+    } else if (incidentId) {
+      fileName = `${dateString}_${timeString}_Incident${incidentId}_${baseName}.${fileExtension}`;
+    } else {
+      fileName = `${dateString}_${timeString}_${baseName}.${fileExtension}`;
+    }
 
     const fileMetadata = {
-      name: sanitizedName,
+      name: fileName,
       parents: [folderId],
-      description: `Uploaded via Incident Management System${incidentId ? ` for Incident ${incidentId}` : ''}`,
+      description: `Incident media upload${helperName ? ` for ${helperName}` : ''}${incidentId ? ` (Incident ${incidentId})` : ''}${description ? `: ${description}` : ''}`,
     };
 
     // Upload file to Google Drive
@@ -127,16 +221,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       fields: 'id, name, webViewLink, webContentLink, mimeType, size, createdTime',
     });
 
-    // Make file accessible (optional - you might want to restrict this)
-    // await drive.permissions.create({
-    //   fileId: driveFile.data.id,
-    //   requestBody: {
-    //     role: 'reader',
-    //     type: 'anyone', // Be careful with this in production
-    //   },
-    // });
+    // Make file accessible to anyone with the link (adjust permissions as needed)
+    if (driveFile.data.id) {
+      await drive.permissions.create({
+        fileId: driveFile.data.id,
+        resource: {
+          role: 'reader',
+          type: 'anyone',
+        },
+      });
+    }
 
-    // Generate thumbnail for videos
+    // Generate thumbnail for videos (async)
     let thumbnailLink = null;
     if (isVideo) {
       // Wait a bit for Google Drive to process the video
@@ -146,7 +242,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // Clean up temporary file
-    fs.unlinkSync(file.filepath);
+    try {
+      fs.unlinkSync(file.filepath);
+    } catch (error) {
+      console.error('Error cleaning up temp file:', error);
+    }
 
     // Construct the direct download URL
     const directDownloadUrl = `https://drive.google.com/uc?export=download&id=${driveFile.data.id}`;

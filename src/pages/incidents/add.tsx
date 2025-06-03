@@ -428,6 +428,9 @@ const AddIncidentPage: NextPage<Props> = ({ user, helpers }) => {
                       onChange={onMediaFilesChange}
                       maxFiles={10}
                       maxSizePerFile={50 * 1024 * 1024} // 50MB
+                      helperName={selectedHelper?.name}
+                      helperCurrentEmployer={selectedHelper?.currentEmployer}
+                      incidentId={`temp_${Date.now()}`} 
                     />
                   </CardContent>
                 </Card>

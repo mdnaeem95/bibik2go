@@ -131,6 +131,10 @@ const IncidentsPage: NextPage<Props> = ({ helpers }) => {
     router.push(`/helpers/${helperId}`);
   };
 
+  const handleViewIncident = (incidentId: string) => {
+    router.push(`/incidents/${incidentId}`);
+  };
+
   const clearFilters = () => {
     setSearch('');
     setSeverityFilter('');
@@ -280,6 +284,7 @@ const IncidentsPage: NextPage<Props> = ({ helpers }) => {
                     boxShadow: 3,
                   },
                 }}
+                onClick={() => handleViewIncident(incident.id)}
               >
                 <CardContent sx={{ flex: 1, p: 3 }}>
                   {/* Header with chips and action */}
