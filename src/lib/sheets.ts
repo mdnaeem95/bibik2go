@@ -214,6 +214,7 @@ export type RawIncidentRow = {
 };
 
 export interface NewIncident {
+  id?: string;
   helperId: string;
   incidentDate: string;
   description: string;
@@ -268,10 +269,14 @@ export async function getIncidentsByHelperId(helperId: string): Promise<RawIncid
   return allIncidents.filter(incident => incident.helperId === helperId);
 }
 
-export async function addIncident(incident: NewIncident): Promise<RawIncidentRow> {
+export async function addIncident(incident: NewIncident & { id?: string }): Promise<RawIncidentRow> {
   const sheet = await getIncidentsSheet();
+
+  // use provided Id or generate a new one
+  const incidentId = incident.id || Date.now().toString();
+
   const row = await sheet.addRow({
-    id: Date.now().toString(),
+    id: incidentId,
     helperId: incident.helperId,
     incidentDate: incident.incidentDate,
     description: incident.description,

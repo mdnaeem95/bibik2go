@@ -27,7 +27,7 @@ const getDriveClient = () => {
 };
 
 // Create or get the incident media folder with better structure
-const getOrCreateMediaFolder = async (drive: any, incidentId?: string, helperName?: string, helperCurrentEmployer?: string) => {
+const getOrCreateMediaFolder = async (drive: any, incidentId: string, helperName?: string, helperCurrentEmployer?: string) => {
   // If we have a shared incident media folder, use it as the base
   if (process.env.INCIDENT_MEDIA_FOLDER_ID) {
     let currentFolderId = process.env.INCIDENT_MEDIA_FOLDER_ID;
@@ -64,7 +64,7 @@ const getOrCreateMediaFolder = async (drive: any, incidentId?: string, helperNam
       }
     }
     
-    // Create incident-specific subfolder if we have incident ID
+    // Create incident-specific subfolder using the consistent incident ID
     if (incidentId) {
       const incidentDate = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
       const incidentFolderName = `Incident_${incidentId}_${incidentDate}`;
@@ -153,10 +153,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const [fields, files] = await form.parse(req);
     const file = Array.isArray(files.file) ? files.file[0] : files.file;
-    const incidentId = Array.isArray(fields.incidentId) ? fields.incidentId[0] : fields.incidentId;
+    
+    // Extract form fields - use provided incidentId or generate a new one
+    let incidentId = Array.isArray(fields.incidentId) ? fields.incidentId[0] : fields.incidentId;
     const helperName = Array.isArray(fields.helperName) ? fields.helperName[0] : fields.helperName;
     const helperCurrentEmployer = Array.isArray(fields.helperCurrentEmployer) ? fields.helperCurrentEmployer[0] : fields.helperCurrentEmployer;
     const description = Array.isArray(fields.description) ? fields.description[0] : fields.description;
+    
+    // Generate a single consistent incident ID if not provided or if it's a temp ID
+    if (!incidentId || incidentId.startsWith('temp_')) {
+      incidentId = Date.now().toString();
+      console.log('Generated new incident ID:', incidentId);
+    }
 
     if (!file) {
       return res.status(400).json({ error: 'No file uploaded' });
@@ -176,10 +184,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({ error: 'File size exceeds 50MB limit' });
     }
 
-    // Get or create the media folder
+    // Get or create the media folder using the consistent incident ID
     const folderId = await getOrCreateMediaFolder(drive, incidentId, helperName, helperCurrentEmployer);
 
-    // Create a more intuitive filename
+    // Create a more intuitive filename using the consistent incident ID
     const currentDate = new Date();
     const dateString = currentDate.toISOString().split('T')[0]; // YYYY-MM-DD
     const timeString = currentDate.toTimeString().split(' ')[0].replace(/:/g, '-'); // HH-MM-SS
@@ -189,7 +197,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const fileExtension = originalName.split('.').pop() || '';
     const baseName = originalName.split('.').slice(0, -1).join('.') || 'upload';
     
-    // Create descriptive filename
+    // Create descriptive filename using consistent incident ID
     let fileName = '';
     if (helperName && incidentId) {
       const sanitizedHelperName = helperName.replace(/[^a-zA-Z0-9\s-]/g, '').replace(/\s+/g, '_');
@@ -222,15 +230,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
 
     // Make file accessible to anyone with the link (adjust permissions as needed)
-    if (driveFile.data.id) {
-      await drive.permissions.create({
-        fileId: driveFile.data.id,
-        resource: {
-          role: 'reader',
-          type: 'anyone',
-        },
-      });
-    }
+    // if (driveFile.data.id) {
+    //   await drive.permissions.create({
+    //     fileId: driveFile.data.id,
+    //     resource: {
+    //       role: 'reader',
+    //       type: 'anyone',
+    //     },
+    //   });
+    // }
 
     // Generate thumbnail for videos (async)
     let thumbnailLink = null;
@@ -251,9 +259,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Construct the direct download URL
     const directDownloadUrl = `https://drive.google.com/uc?export=download&id=${driveFile.data.id}`;
 
-    // Return file information
+    // Return file information with the consistent incident ID
     const response = {
       id: `drive_${driveFile.data.id}_${Date.now()}`,
+      incidentId: incidentId, // Return the consistent incident ID
       driveFileId: driveFile.data.id,
       name: driveFile.data.name,
       mimeType: driveFile.data.mimeType,

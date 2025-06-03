@@ -44,7 +44,6 @@ import toast from 'react-hot-toast';
 
 import DashboardLayout from '@/components/DashboardLayout';
 import { getAllIncidents, getAllHelpers } from '@/lib/sheets';
-import Image from 'next/image';
 
 interface Incident {
   id: string;
@@ -381,7 +380,7 @@ export default function IncidentDetail({ incident, helper }: Props) {
               <ImageListItem key={mediaFile.id}>
                 <Card sx={{ position: 'relative', '&:hover .media-overlay': { opacity: 1 } }}>
                   {mediaFile.type === 'image' ? (
-                    <Image
+                    <img
                       src={getMediaThumbnail(mediaFile)}
                       alt={mediaFile.name}
                       style={{ width: '100%', height: 'auto', cursor: 'pointer' }}
@@ -502,7 +501,7 @@ export default function IncidentDetail({ incident, helper }: Props) {
           {selectedMedia && (
             <Box textAlign="center">
               {selectedMedia.type === 'image' ? (
-                <Image
+                <img
                   src={selectedMedia.url}
                   alt={selectedMedia.name}
                   style={{ maxWidth: '100%', maxHeight: '70vh', objectFit: 'contain' }}
@@ -545,7 +544,7 @@ export default function IncidentDetail({ incident, helper }: Props) {
         <DialogContent sx={{ p: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           {fullscreenMedia && (
             fullscreenMedia.type === 'image' ? (
-              <Image
+              <img
                 src={fullscreenMedia.url}
                 alt={fullscreenMedia.name}
                 style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}

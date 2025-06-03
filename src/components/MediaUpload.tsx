@@ -36,6 +36,7 @@ export interface MediaFile {
   uploadProgress?: number;
   isUploading?: boolean;
   driveFileId?: string;
+  incidentId?: string; // Add incident ID to track which incident this belongs to
 }
 
 interface MediaUploadProps {
@@ -65,7 +66,12 @@ const MediaUpload: React.FC<MediaUploadProps> = ({
   const uploadFile = async (file: File): Promise<MediaFile> => {
     const formData = new FormData();
     formData.append('file', file);
-    if (incidentId) formData.append('incidentId', incidentId);
+    
+    // Only pass incidentId if it's a real ID (not temp)
+    if (incidentId && !incidentId.startsWith('temp_')) {
+      formData.append('incidentId', incidentId);
+    }
+    
     if (helperName) formData.append('helperName', helperName);
     if (helperCurrentEmployer) formData.append('helperCurrentEmployer', helperCurrentEmployer);
     formData.append('description', `${file.name} - Incident media`);
@@ -91,6 +97,7 @@ const MediaUpload: React.FC<MediaUploadProps> = ({
       url: result.webViewLink,
       thumbnailUrl: result.thumbnailLink,
       driveFileId: result.driveFileId,
+      incidentId: result.incidentId, // Store the consistent incident ID
     };
   };
 

@@ -1,5 +1,6 @@
 // src/pages/incidents/add.tsx (Enhanced version)
 /* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { GetServerSideProps, NextPage } from 'next';
@@ -173,25 +174,48 @@ const AddIncidentPage: NextPage<Props> = ({ user, helpers }) => {
     setLoading(true);
 
     try {
+      // Use the incident ID from the first uploaded media file if available
+      // Otherwise generate a new one
+      let consistentIncidentId: string;
+
+      if (form.mediaFiles.length > 0 && form.mediaFiles[0].incidentId) {
+        // Use the ID from the uploaded media files
+        consistentIncidentId = form.mediaFiles[0].incidentId;
+        console.log('Using incident ID from media files:', consistentIncidentId);
+      } else {
+        // Generate a new ID if no media files were uploaded
+        consistentIncidentId = Date.now().toString();
+        console.log('Generated new incident ID:', consistentIncidentId);
+      }
+
+      // Prepare the incident data
+      const incidentData = {
+        id: consistentIncidentId, // Use the same ID we'll use for media
+        helperId: form.helperId,
+        incidentDate: form.incidentDate,
+        description: form.description,
+        severity: form.severity,
+        reportedBy: form.reportedBy,
+        status: form.status,
+        resolution: form.resolution || undefined,
+        mediaUrls: form.mediaFiles.map(file => file.url), // Save URLs to incident
+        mediaFileIds: form.mediaFiles.map(file => file.driveFileId).filter(Boolean), // Save Drive file IDs
+        createdAt: new Date().toISOString(),
+      };
+
       const res = await fetch('/api/incidents', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          helperId: form.helperId,
-          incidentDate: form.incidentDate,
-          description: form.description,
-          severity: form.severity,
-          reportedBy: form.reportedBy,
-          status: form.status,
-          resolution: form.resolution || undefined,
-          mediaUrls: form.mediaFiles.map(file => file.url), // Save URLs to incident
-          mediaFiles: form.mediaFiles, // Full media file info
-        }),
+        body: JSON.stringify(incidentData),
       });
+
       if (!res.ok) {
         const { error } = await res.json();
         throw new Error(error || 'Failed to create incident');
       }
+
+      const { id: createdIncidentId } = await res.json();
+      
       toast.success('Incident added successfully with media files!');
       router.push(`/helpers/${form.helperId}`);
     } catch (err: unknown) {
