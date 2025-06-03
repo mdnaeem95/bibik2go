@@ -19,9 +19,12 @@ import {
   InputLabel,
   IconButton,
   Tooltip,
+  Paper,
+  Divider,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import PersonIcon from '@mui/icons-material/Person';
+import FilterListIcon from '@mui/icons-material/FilterList';
 
 import DashboardLayout from '@/components/DashboardLayout';
 import { sessionOptions, SessionUser } from '@/lib/session';
@@ -128,93 +131,160 @@ const IncidentsPage: NextPage<Props> = ({ helpers }) => {
     router.push(`/helpers/${helperId}`);
   };
 
+  const clearFilters = () => {
+    setSearch('');
+    setSeverityFilter('');
+    setStatusFilter('');
+  };
+
+  const hasActiveFilters = search !== '' || severityFilter !== '' || statusFilter !== '';
+
   return (
     <DashboardLayout>
-      <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Typography variant="h4">All Incidents</Typography>
-        <Button 
-          variant="contained" 
-          startIcon={<AddIcon />}
-          onClick={handleAddIncident}
-        >
-          Add Incident
-        </Button>
-      </Box>
-
-      {/* Filters */}
-      <Box sx={{ mb: 3, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-        <TextField
-          label="Search incidents..."
-          variant="outlined"
-          size="small"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          sx={{ minWidth: 300 }}
-        />
-
-        <FormControl size="small" sx={{ minWidth: 120 }}>
-          <InputLabel>Severity</InputLabel>
-          <Select
-            value={severityFilter}
-            label="Severity"
-            onChange={(e) => setSeverityFilter(e.target.value)}
+      {/* Header */}
+      <Box sx={{ mb: 3 }}>
+        <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+          <Box>
+            <Typography variant="h4" gutterBottom>
+              Incident Management
+            </Typography>
+            <Typography variant="body1" color="text.secondary">
+              Track and manage all helper incidents
+            </Typography>
+          </Box>
+          <Button 
+            variant="contained" 
+            startIcon={<AddIcon />}
+            onClick={handleAddIncident}
+            size="large"
           >
-            <MenuItem value="">All</MenuItem>
-            <MenuItem value="Low">Low</MenuItem>
-            <MenuItem value="Medium">Medium</MenuItem>
-            <MenuItem value="High">High</MenuItem>
-            <MenuItem value="Critical">Critical</MenuItem>
-          </Select>
-        </FormControl>
-
-        <FormControl size="small" sx={{ minWidth: 120 }}>
-          <InputLabel>Status</InputLabel>
-          <Select
-            value={statusFilter}
-            label="Status"
-            onChange={(e) => setStatusFilter(e.target.value)}
-          >
-            <MenuItem value="">All</MenuItem>
-            <MenuItem value="Open">Open</MenuItem>
-            <MenuItem value="Under Review">Under Review</MenuItem>
-            <MenuItem value="Resolved">Resolved</MenuItem>
-          </Select>
-        </FormControl>
-      </Box>
-
-      {/* Results Summary */}
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        Showing {filteredIncidents.length} of {incidents.length} incidents
-      </Typography>
-
-      {loading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-          <CircularProgress />
-        </Box>
-      ) : filteredIncidents.length === 0 ? (
-        <Box textAlign="center" py={4}>
-          <Typography variant="h6" color="text.secondary" gutterBottom>
-            {incidents.length === 0 ? 'No incidents found' : 'No incidents match your filters'}
-          </Typography>
-          <Typography variant="body2" color="text.secondary" mb={2}>
-            {incidents.length === 0 
-              ? 'Start by adding your first incident report.'
-              : 'Try adjusting your search or filter criteria.'
-            }
-          </Typography>
-          <Button variant="outlined" onClick={handleAddIncident}>
             Add Incident
           </Button>
         </Box>
-      ) : (
+      </Box>
+
+      {/* Filters */}
+      <Paper sx={{ p: 3, mb: 3 }} elevation={1}>
+        <Box display="flex" alignItems="center" gap={1} mb={2}>
+          <FilterListIcon color="action" />
+          <Typography variant="h6">Filters</Typography>
+          {hasActiveFilters && (
+            <Button size="small" onClick={clearFilters}>
+              Clear All
+            </Button>
+          )}
+        </Box>
+        
         <Grid container spacing={2}>
+          <Grid>
+            <TextField
+              label="Search incidents..."
+              variant="outlined"
+              size="small"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              fullWidth
+              placeholder="Helper name, description, or reporter..."
+            />
+          </Grid>
+
+          <Grid>
+            <FormControl size="small" fullWidth>
+              <InputLabel>Severity</InputLabel>
+              <Select
+                value={severityFilter}
+                label="Severity"
+                onChange={(e) => setSeverityFilter(e.target.value)}
+              >
+                <MenuItem value="">All Severities</MenuItem>
+                <MenuItem value="Low">Low</MenuItem>
+                <MenuItem value="Medium">Medium</MenuItem>
+                <MenuItem value="High">High</MenuItem>
+                <MenuItem value="Critical">Critical</MenuItem>
+              </Select>
+            </FormControl>
+          </Grid>
+
+          <Grid>
+            <FormControl size="small" fullWidth>
+              <InputLabel>Status</InputLabel>
+              <Select
+                value={statusFilter}
+                label="Status"
+                onChange={(e) => setStatusFilter(e.target.value)}
+              >
+                <MenuItem value="">All Statuses</MenuItem>
+                <MenuItem value="Open">Open</MenuItem>
+                <MenuItem value="Under Review">Under Review</MenuItem>
+                <MenuItem value="Resolved">Resolved</MenuItem>
+              </Select>
+            </FormControl>
+          </Grid>
+        </Grid>
+      </Paper>
+
+      {/* Results Summary */}
+      <Box sx={{ mb: 2 }}>
+        <Typography variant="body2" color="text.secondary">
+          Showing <strong>{filteredIncidents.length}</strong> of <strong>{incidents.length}</strong> incidents
+          {hasActiveFilters && (
+            <Chip 
+              label="Filtered" 
+              size="small" 
+              color="primary" 
+              sx={{ ml: 1 }}
+              onDelete={clearFilters}
+            />
+          )}
+        </Typography>
+      </Box>
+
+      {/* Content */}
+      {loading ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
+          <CircularProgress size={40} />
+        </Box>
+      ) : filteredIncidents.length === 0 ? (
+        <Paper sx={{ p: 6, textAlign: 'center' }} elevation={1}>
+          <Typography variant="h6" color="text.secondary" gutterBottom>
+            {incidents.length === 0 ? 'No incidents found' : 'No incidents match your filters'}
+          </Typography>
+          <Typography variant="body2" color="text.secondary" mb={3}>
+            {incidents.length === 0 
+              ? 'Start by adding your first incident report to track helper issues.'
+              : 'Try adjusting your search criteria or clearing the filters.'
+            }
+          </Typography>
+          {incidents.length === 0 ? (
+            <Button variant="contained" onClick={handleAddIncident}>
+              Add First Incident
+            </Button>
+          ) : (
+            <Button variant="outlined" onClick={clearFilters}>
+              Clear Filters
+            </Button>
+          )}
+        </Paper>
+      ) : (
+        <Grid container spacing={3}>
           {filteredIncidents.map((incident) => (
             <Grid key={incident.id}>
-              <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-                <CardContent sx={{ flex: 1 }}>
-                  {/* Header with chips */}
-                  <Box display="flex" justifyContent="between" mb={2}>
-                    <Box display="flex" gap={1}>
+              <Card 
+                sx={{ 
+                  height: '100%', 
+                  display: 'flex', 
+                  flexDirection: 'column',
+                  transition: 'transform 0.2s, box-shadow 0.2s',
+                  '&:hover': {
+                    transform: 'translateY(-2px)',
+                    boxShadow: 3,
+                  },
+                }}
+              >
+                <CardContent sx={{ flex: 1, p: 3 }}>
+                  {/* Header with chips and action */}
+                  <Box display="flex" justifyContent="between" alignItems="flex-start" mb={2}>
+                    <Box display="flex" gap={1} flexWrap="wrap">
                       <Chip 
                         label={incident.severity} 
                         color={getSeverityColor(incident.severity) as any}
@@ -230,6 +300,7 @@ const IncidentsPage: NextPage<Props> = ({ helpers }) => {
                       <IconButton 
                         size="small" 
                         onClick={() => handleViewHelper(incident.helperId)}
+                        sx={{ ml: 1 }}
                       >
                         <PersonIcon fontSize="small" />
                       </IconButton>
@@ -237,30 +308,45 @@ const IncidentsPage: NextPage<Props> = ({ helpers }) => {
                   </Box>
 
                   {/* Helper Info */}
-                  <Typography variant="h6" gutterBottom>
+                  <Typography variant="h6" gutterBottom fontWeight={600}>
                     {getHelperName(incident.helperId)}
                   </Typography>
                   <Typography variant="body2" color="text.secondary" gutterBottom>
-                    {getHelperEmployer(incident.helperId)}
+                    Employer: {getHelperEmployer(incident.helperId)}
                   </Typography>
+
+                  <Divider sx={{ my: 2 }} />
 
                   {/* Incident Details */}
                   <Typography variant="body2" color="text.secondary" gutterBottom>
                     <strong>Date:</strong> {new Date(incident.incidentDate).toLocaleDateString()}
                   </Typography>
 
-                  <Typography variant="body1" sx={{ mb: 2, display: '-webkit-box', '-webkit-line-clamp': 3, '-webkit-box-orient': 'vertical', overflow: 'hidden' }}>
+                  <Typography 
+                    variant="body1" 
+                    sx={{ 
+                      mb: 2, 
+                      display: '-webkit-box', 
+                      '-webkit-line-clamp': 3, 
+                      '-webkit-box-orient': 'vertical', 
+                      overflow: 'hidden',
+                      lineHeight: 1.5,
+                    }}
+                  >
                     {incident.description}
                   </Typography>
 
                   {/* Footer */}
-                  <Box display="flex" justifyContent="between" alignItems="center" mt="auto">
-                    <Typography variant="body2" color="text.secondary">
-                      By: {incident.reportedBy}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      {new Date(incident.createdAt).toLocaleDateString()}
-                    </Typography>
+                  <Box mt="auto">
+                    <Divider sx={{ mb: 2 }} />
+                    <Box display="flex" justifyContent="between" alignItems="center">
+                      <Typography variant="body2" color="text.secondary">
+                        <strong>Reporter:</strong> {incident.reportedBy}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {new Date(incident.createdAt).toLocaleDateString()}
+                      </Typography>
+                    </Box>
                   </Box>
                 </CardContent>
               </Card>

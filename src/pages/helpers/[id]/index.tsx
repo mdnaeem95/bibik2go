@@ -18,9 +18,18 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  Alert,
+  Breadcrumbs,
+  Link,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
+import EditIcon from '@mui/icons-material/Edit';
+import NavigateNextIcon from '@mui/icons-material/NavigateNext';
+import PersonIcon from '@mui/icons-material/Person';
+import WorkIcon from '@mui/icons-material/Work';
+import BusinessIcon from '@mui/icons-material/Business';
+import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import toast from 'react-hot-toast';
 
 import DashboardLayout from '@/components/DashboardLayout';
@@ -120,6 +129,10 @@ export default function HelperProfile({ helper }: Props) {
     setDeleteDialog({ open: false, incidentId: null });
   };
 
+  const openIncidents = incidents.filter(i => i.status === 'Open');
+  const resolvedIncidents = incidents.filter(i => i.status === 'Resolved');
+  const underReviewIncidents = incidents.filter(i => i.status === 'Under Review');
+
   if (router.isFallback) {
     return (
       <DashboardLayout>
@@ -132,118 +145,246 @@ export default function HelperProfile({ helper }: Props) {
 
   return (
     <DashboardLayout>
-      {/* Helper Basic Info */}
-      <Paper sx={{ p: 3, mb: 3 }}>
-        <Box display="flex" justifyContent="space-between" alignItems="center">
-          <Typography variant="h4">{helper?.name}</Typography>
-          <Button variant="contained" onClick={() => router.push(`/helpers/${helper?.id}/edit?returnTo=/helpers/${helper?.id}`)}>
-            Edit Profile
-          </Button>
-        </Box>
-        <Divider sx={{ my: 2 }} />
+      {/* Breadcrumbs */}
+      <Breadcrumbs 
+        separator={<NavigateNextIcon fontSize="small" />}
+        sx={{ mb: 3 }}
+      >
+        <Link 
+          color="inherit" 
+          href="/helpers" 
+          onClick={(e) => { e.preventDefault(); router.push('/helpers'); }}
+          sx={{ cursor: 'pointer' }}
+        >
+          Helpers
+        </Link>
+        <Typography color="text.primary">{helper?.name}</Typography>
+      </Breadcrumbs>
 
-        <Grid container spacing={2}>
+      {/* Helper Basic Info */}
+      <Paper sx={{ p: 4, mb: 3 }} elevation={2}>
+        <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={3}>
+          <Box>
+            <Typography variant="h4" gutterBottom fontWeight={600}>
+              {helper?.name}
+            </Typography>
+            <Box display="flex" gap={1} flexWrap="wrap">
+              <Chip 
+                icon={<WorkIcon />}
+                label={`${incidents.length} Incidents`}
+                color={incidents.length > 0 ? 'warning' : 'success'}
+                variant="outlined"
+              />
+              <Chip 
+                icon={<AttachMoneyIcon />}
+                label={`$${Number(helper?.outstandingLoan || 0).toLocaleString()} Outstanding`}
+                color={Number(helper?.outstandingLoan || 0) > 0 ? 'error' : 'success'}
+                variant="outlined"
+              />
+            </Box>
+          </Box>
+          <Box display="flex" gap={2}>
+            <Button 
+              variant="outlined" 
+              startIcon={<EditIcon />}
+              onClick={() => router.push(`/helpers/${helper?.id}/edit?returnTo=/helpers/${helper?.id}`)}
+            >
+              Edit Profile
+            </Button>
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={handleAddIncident}
+            >
+              Add Incident
+            </Button>
+          </Box>
+        </Box>
+
+        <Divider sx={{ mb: 3 }} />
+
+        <Grid container spacing={3}>
           <Grid>
-            <Typography variant="subtitle1"><strong>Current Employer:</strong> {helper?.currentEmployer}</Typography>
-            <Typography variant="subtitle1"><strong>Total Employers:</strong> {helper?.totalEmployers}</Typography>
-            <Typography variant="subtitle1"><strong>EA Officer:</strong> {helper?.eaOfficer}</Typography>
+            <Box>
+              <Typography variant="subtitle2" color="text.secondary" gutterBottom sx={{ textTransform: 'uppercase', fontSize: '0.75rem' }}>
+                Employment Details
+              </Typography>
+              <Box sx={{ mb: 2 }}>
+                <Typography variant="body1" sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                  <BusinessIcon fontSize="small" color="action" />
+                  <strong>Current Employer:</strong> {helper?.currentEmployer}
+                </Typography>
+                <Typography variant="body1" sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                  <WorkIcon fontSize="small" color="action" />
+                  <strong>Total Employers:</strong> {helper?.totalEmployers}
+                </Typography>
+                <Typography variant="body1" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <PersonIcon fontSize="small" color="action" />
+                  <strong>EA Officer:</strong> {helper?.eaOfficer}
+                </Typography>
+              </Box>
+            </Box>
           </Grid>
+          
           <Grid>
-            <Typography variant="subtitle1"><strong>Outstanding Loan:</strong> ${Number(helper?.outstandingLoan || 0).toLocaleString()}</Typography>
-            <Typography variant="subtitle1"><strong>Latest Issue:</strong> {helper?.problem}</Typography>
+            <Box>
+              <Typography variant="subtitle2" color="text.secondary" gutterBottom sx={{ textTransform: 'uppercase', fontSize: '0.75rem' }}>
+                Financial & Status
+              </Typography>
+              <Box sx={{ mb: 2 }}>
+                <Typography variant="body1" sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                  <AttachMoneyIcon fontSize="small" color="action" />
+                  <strong>Outstanding Loan:</strong> ${Number(helper?.outstandingLoan || 0).toLocaleString()}
+                </Typography>
+                <Typography variant="body1" sx={{ mb: 1 }}>
+                  <strong>Latest Issue:</strong> {helper?.problem}
+                </Typography>
+              </Box>
+            </Box>
           </Grid>
         </Grid>
       </Paper>
 
+      {/* Incident Statistics */}
+      {incidents.length > 0 && (
+        <Grid container spacing={2} sx={{ mb: 3 }}>
+          <Grid>
+            <Card sx={{ bgcolor: '#fff3e0', border: '1px solid #ffcc02' }}>
+              <CardContent sx={{ textAlign: 'center', py: 2 }}>
+                <Typography variant="h3" color="#e65100" fontWeight={600}>
+                  {openIncidents.length}
+                </Typography>
+                <Typography variant="body2" color="#e65100">
+                  Open Issues
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+          <Grid>
+            <Card sx={{ bgcolor: '#e3f2fd', border: '1px solid #2196f3' }}>
+              <CardContent sx={{ textAlign: 'center', py: 2 }}>
+                <Typography variant="h3" color="#1976d2" fontWeight={600}>
+                  {underReviewIncidents.length}
+                </Typography>
+                <Typography variant="body2" color="#1976d2">
+                  Under Review
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+          <Grid>
+            <Card sx={{ bgcolor: '#e8f5e8', border: '1px solid #4caf50' }}>
+              <CardContent sx={{ textAlign: 'center', py: 2 }}>
+                <Typography variant="h3" color="#388e3c" fontWeight={600}>
+                  {resolvedIncidents.length}
+                </Typography>
+                <Typography variant="body2" color="#388e3c">
+                  Resolved
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+        </Grid>
+      )}
+
       {/* Incidents Section */}
-      <Paper sx={{ p: 3 }}>
-        <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-          <Typography variant="h5">Incident History</Typography>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={handleAddIncident}
-          >
-            Add Incident
-          </Button>
+      <Paper sx={{ p: 4 }} elevation={2}>
+        <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+          <Typography variant="h5" fontWeight={600}>
+            Incident History
+          </Typography>
+          {incidents.length > 0 && (
+            <Button
+              variant="outlined"
+              startIcon={<AddIcon />}
+              onClick={handleAddIncident}
+            >
+              Add Incident
+            </Button>
+          )}
         </Box>
 
         {loading ? (
-          <Box display="flex" justifyContent="center" py={4}>
+          <Box display="flex" justifyContent="center" py={6}>
             <CircularProgress />
           </Box>
         ) : incidents.length === 0 ? (
-          <Box textAlign="center" py={4}>
-            <Typography variant="h6" color="text.secondary" gutterBottom>
-              No incidents recorded
-            </Typography>
-            <Typography variant="body2" color="text.secondary" mb={2}>
-              This helper has a clean record with no reported incidents.
-            </Typography>
-            <Button variant="outlined" onClick={handleAddIncident}>
+          <Box textAlign="center" py={6}>
+            <Alert severity="success" sx={{ mb: 3 }}>
+              <Typography variant="h6" gutterBottom>
+                No incidents recorded
+              </Typography>
+              <Typography variant="body2">
+                This helper has a clean record with no reported incidents.
+              </Typography>
+            </Alert>
+            <Button variant="contained" onClick={handleAddIncident}>
               Report First Incident
             </Button>
           </Box>
         ) : (
-          <Box>
+          <Grid container spacing={3}>
             {incidents.map((incident) => (
-              <Card key={incident.id} sx={{ mb: 2, border: '1px solid #e0e0e0' }}>
-                <CardContent>
-                  <Box display="flex" justifyContent="between" alignItems="flex-start" mb={1}>
-                    <Box flex={1}>
-                      <Box display="flex" gap={1} mb={1}>
-                        <Chip 
-                          label={incident.severity} 
-                          color={getSeverityColor(incident.severity) as any}
+              <Grid key={incident.id}>
+                <Card variant="outlined" sx={{ '&:hover': { boxShadow: 2 } }}>
+                  <CardContent sx={{ p: 3 }}>
+                    <Box display="flex" justifyContent="between" alignItems="flex-start" mb={2}>
+                      <Box flex={1}>
+                        <Box display="flex" gap={1} mb={2} flexWrap="wrap">
+                          <Chip 
+                            label={incident.severity} 
+                            color={getSeverityColor(incident.severity) as any}
+                            size="small" 
+                          />
+                          <Chip 
+                            label={incident.status} 
+                            color={getStatusColor(incident.status) as any}
+                            size="small" 
+                          />
+                          <Chip 
+                            label={new Date(incident.incidentDate).toLocaleDateString()}
+                            variant="outlined"
+                            size="small"
+                          />
+                        <IconButton 
                           size="small" 
-                        />
-                        <Chip 
-                          label={incident.status} 
-                          color={getStatusColor(incident.status) as any}
-                          size="small" 
-                        />
+                          color="error"
+                          onClick={() => setDeleteDialog({ open: true, incidentId: incident.id })}
+                        >
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                        </Box>
                       </Box>
-                      <Typography variant="h6" gutterBottom>
-                        {new Date(incident.incidentDate).toLocaleDateString()}
-                      </Typography>
                     </Box>
-                    <Box>
-                      <IconButton 
-                        size="small" 
-                        onClick={() => setDeleteDialog({ open: true, incidentId: incident.id })}
-                      >
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
-                    </Box>
-                  </Box>
 
-                  <Typography variant="body1" mb={2}>
-                    {incident.description}
-                  </Typography>
-
-                  <Box display="flex" justifyContent="between" alignItems="center">
-                    <Typography variant="body2" color="text.secondary">
-                      Reported by: <strong>{incident.reportedBy}</strong>
+                    <Typography variant="body1" sx={{ mb: 2, lineHeight: 1.6 }}>
+                      {incident.description}
                     </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      {new Date(incident.createdAt).toLocaleDateString()}
-                    </Typography>
-                  </Box>
 
-                  {incident.resolution && (
-                    <Box mt={2} p={2} bgcolor="#f5f5f5" borderRadius={1}>
-                      <Typography variant="body2" color="text.secondary" gutterBottom>
-                        <strong>Resolution:</strong>
+                    <Box display="flex" justifyContent="space-between" alignItems="center" sx={{ color: 'text.secondary' }}>
+                      <Typography variant="body2">
+                        Reported by: <strong>{incident.reportedBy}</strong>
                       </Typography>
                       <Typography variant="body2">
-                        {incident.resolution}
+                        {new Date(incident.createdAt).toLocaleDateString()}
                       </Typography>
                     </Box>
-                  )}
-                </CardContent>
-              </Card>
+
+                    {incident.resolution && (
+                      <Box mt={2} p={2} bgcolor="#f5f5f5" borderRadius={1}>
+                        <Typography variant="body2" color="text.secondary" gutterBottom>
+                          <strong>Resolution:</strong>
+                        </Typography>
+                        <Typography variant="body2">
+                          {incident.resolution}
+                        </Typography>
+                      </Box>
+                    )}
+                  </CardContent>
+                </Card>
+              </Grid>
             ))}
-          </Box>
+          </Grid>
         )}
       </Paper>
 
@@ -262,6 +403,7 @@ export default function HelperProfile({ helper }: Props) {
           <Button 
             onClick={() => deleteDialog.incidentId && handleDeleteIncident(deleteDialog.incidentId)} 
             color="error"
+            variant="contained"
           >
             Delete
           </Button>

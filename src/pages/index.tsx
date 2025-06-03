@@ -32,19 +32,19 @@ const Dashboard: NextPage<DashboardProps> = ({ metrics }) => {
   const dashboardMetrics = [
     {
       title: 'Total Helpers',
-      value: metrics.totalHelpers | 0,
+      value: metrics.totalHelpers || 0,
       icon: <PeopleIcon />,
       iconColor: '#3b82f6',
     },
     {
       title: 'Staff Members',
-      value: metrics.totalStaff | 0,
+      value: metrics.totalStaff || 0,
       icon: <BadgeIcon />,
       iconColor: '#10b981',
     },
     {
       title: 'Outstanding Loans',
-      value: `$${metrics.totalOutstandingLoans.toLocaleString()}`,
+      value: `$${(metrics.totalOutstandingLoans || 0).toLocaleString()}`,
       icon: <AttachMoneyIcon />,
       iconColor: '#f97316',
     },
@@ -52,25 +52,39 @@ const Dashboard: NextPage<DashboardProps> = ({ metrics }) => {
 
   return (
     <DashboardLayout>
+      <Box sx={{ mb: 3 }}>
+        <Typography variant="h4" gutterBottom>
+          Dashboard Overview
+        </Typography>
+        <Typography variant="body1" color="text.secondary">
+          Welcome to your Bibik2go management portal
+        </Typography>
+      </Box>
+
       <Grid container spacing={3}>
         {dashboardMetrics.map((item) => (
           <Grid key={item.title}>
             <Paper
-              elevation={3}
+              elevation={2}
               sx={{
                 p: 3,
-                borderRadius: 4,
+                borderRadius: 3,
                 height: '100%',
                 display: 'flex',
                 alignItems: 'center',
                 gap: 2,
+                transition: 'transform 0.2s, box-shadow 0.2s',
+                '&:hover': {
+                  transform: 'translateY(-2px)',
+                  boxShadow: 3,
+                },
               }}
             >
               <Avatar
                 sx={{
                   bgcolor: item.iconColor,
-                  width: 48,
-                  height: 48,
+                  width: 56,
+                  height: 56,
                 }}
               >
                 {item.icon}
@@ -80,7 +94,12 @@ const Dashboard: NextPage<DashboardProps> = ({ metrics }) => {
                 <Typography
                   variant="body2"
                   color="text.secondary"
-                  sx={{ textTransform: 'uppercase', fontWeight: 500 }}
+                  sx={{ 
+                    textTransform: 'uppercase', 
+                    fontWeight: 500,
+                    fontSize: '0.75rem',
+                    letterSpacing: '0.5px'
+                  }}
                 >
                   {item.title}
                 </Typography>
