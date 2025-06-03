@@ -1,4 +1,4 @@
-// src/pages/helpers/[id]/edit.tsx
+// src/pages/staff/[id]/edit.tsx
 import { useState } from 'react';
 import { useRouter } from 'next/router';
 import { GetServerSideProps, NextPage } from 'next';
@@ -18,7 +18,7 @@ import DashboardLayout from '@/components/DashboardLayout';
 import { sessionOptions, SessionUser } from '@/lib/session';
 import { getAllStaff } from '@/lib/sheets';
 
-// Type for the helper prop we’ll pass in
+// Type for the staff prop we'll pass in
 interface StaffProp {
   id: string;
   name: string;
@@ -108,7 +108,7 @@ const EditStaffPage: NextPage<Props> = ({ staff }) => {
     <DashboardLayout>
       <Paper sx={{ p: 4, maxWidth: 600, mx: 'auto' }} elevation={1}>
         <Typography variant="h5" gutterBottom>
-          Edit Helper
+          Edit Staff
         </Typography>
 
         {submitError && <Alert severity="error" sx={{ mb: 2 }}>{submitError}</Alert>}

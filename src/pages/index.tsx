@@ -2,6 +2,7 @@
 import { GetServerSideProps, NextPage } from 'next';
 import { getIronSession } from 'iron-session';
 import { sessionOptions, SessionUser } from '@/lib/session';
+import { getAllHelpers, getAllStaff } from '@/lib/sheets';
 import DashboardLayout from '@/components/DashboardLayout';
 
 import {
@@ -14,38 +15,45 @@ import {
 
 import PeopleIcon from '@mui/icons-material/People';
 import BadgeIcon from '@mui/icons-material/Badge';
-import ReportProblemIcon from '@mui/icons-material/ReportProblem';
+import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
+
+interface DashboardMetrics {
+  totalHelpers: number;
+  totalStaff: number;
+  totalOutstandingLoans: number;
+}
 
 interface DashboardProps {
   user: SessionUser;
+  metrics: DashboardMetrics;
 }
 
-const metrics = [
-  {
-    title: 'Total Helpers',
-    value: 128,
-    icon: <PeopleIcon />,
-    iconColor: '#3b82f6',
-  },
-  {
-    title: 'Staff Members',
-    value: 16,
-    icon: <BadgeIcon />,
-    iconColor: '#10b981',
-  },
-  {
-    title: 'Open Issues',
-    value: 7,
-    icon: <ReportProblemIcon />,
-    iconColor: '#f97316',
-  },
-];
+const Dashboard: NextPage<DashboardProps> = ({ metrics }) => {
+  const dashboardMetrics = [
+    {
+      title: 'Total Helpers',
+      value: metrics.totalHelpers | 0,
+      icon: <PeopleIcon />,
+      iconColor: '#3b82f6',
+    },
+    {
+      title: 'Staff Members',
+      value: metrics.totalStaff | 0,
+      icon: <BadgeIcon />,
+      iconColor: '#10b981',
+    },
+    {
+      title: 'Outstanding Loans',
+      value: `$${metrics.totalOutstandingLoans.toLocaleString()}`,
+      icon: <AttachMoneyIcon />,
+      iconColor: '#f97316',
+    },
+  ];
 
-const Dashboard: NextPage<DashboardProps> = () => {
   return (
     <DashboardLayout>
       <Grid container spacing={3}>
-        {metrics.map((item) => (
+        {dashboardMetrics.map((item) => (
           <Grid key={item.title}>
             <Paper
               elevation={3}
@@ -89,7 +97,7 @@ const Dashboard: NextPage<DashboardProps> = () => {
 };
 
 export const getServerSideProps: GetServerSideProps<DashboardProps> = async ({ req, res }) => {
-  // Tell getIronSession the shape of your session data
+  // Check authentication
   const session = await getIronSession<{ user?: SessionUser }>(
     req,
     res,
@@ -105,11 +113,50 @@ export const getServerSideProps: GetServerSideProps<DashboardProps> = async ({ r
     };
   }
 
-  return {
-    props: {
-      user: session.user,
-    },
-  };
+  try {
+    // Fetch data from Google Sheets
+    const [helpersData, staffData] = await Promise.all([
+      getAllHelpers(),
+      getAllStaff(),
+    ]);
+
+    // Calculate metrics
+    const totalHelpers = helpersData.length;
+    const totalStaff = staffData.length;
+    
+    // Calculate total outstanding loans
+    const totalOutstandingLoans = helpersData.reduce((sum, helper) => {
+      const loan = Number(helper.outstandingLoan) || 0;
+      return sum + loan;
+    }, 0);
+
+    const metrics: DashboardMetrics = {
+      totalHelpers,
+      totalStaff,
+      totalOutstandingLoans,
+    };
+
+    return {
+      props: {
+        user: session.user,
+        metrics,
+      },
+    };
+  } catch (error) {
+    console.error('Error fetching dashboard metrics:', error);
+    
+    // Return default metrics if there's an error
+    return {
+      props: {
+        user: session.user,
+        metrics: {
+          totalHelpers: 0,
+          totalStaff: 0,
+          totalOutstandingLoans: 0,
+        },
+      },
+    };
+  }
 };
 
 export default Dashboard;
