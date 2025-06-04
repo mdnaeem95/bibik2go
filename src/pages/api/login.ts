@@ -1,28 +1,36 @@
-// src/pages/api/login.ts
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { getIronSession } from 'iron-session';
 import bcrypt from 'bcrypt';
 import { sessionOptions, SessionUser } from '@/lib/session';
-
-const ADMIN_USER = 'admin';
-// paste your full bcrypt hash here (including all $ characters)
-const ADMIN_HASH = '$2b$10$1Z3MThBzrcPUfxfTaANFEeEUH0/9Z8eIwhbGGHDSyCk1pGhgEMnDe';
+import { getUserByUsername } from '@/lib/users';
 
 export default async function loginRoute(req: NextApiRequest, res: NextApiResponse) {
-  const session = await getIronSession<{ user?: SessionUser }>(
-    req, res, sessionOptions
-  );
-
+  const session = await getIronSession<{ user?: SessionUser }>(req, res, sessionOptions);
   const { username, password } = req.body;
 
-  if (username !== ADMIN_USER) {
+  // Get user from database
+  const user = await getUserByUsername(username);
+  
+  if (!user) {
     return res.status(404).json({ message: 'Username not found' });
   }
-  if (!(await bcrypt.compare(password, ADMIN_HASH))) {
+
+  if (user.status !== 'active') {
+    return res.status(401).json({ message: 'Account is inactive' });
+  }
+
+  if (!(await bcrypt.compare(password, user.hashedPassword))) {
     return res.status(401).json({ message: 'Incorrect password' });
   }
 
-  session.user = { isLoggedIn: true, username };
+  // Set the user in session
+  session.user = { 
+    isLoggedIn: true, 
+    username: user.username,
+    role: user.role,
+    email: user.email 
+  };
+  
   await session.save();
   return res.status(200).json({ message: 'Logged in' });
 }
