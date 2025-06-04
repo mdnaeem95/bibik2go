@@ -1,8 +1,9 @@
-// src/pages/index.tsx
+// src/pages/index.tsx (UPDATED)
 import { GetServerSideProps, NextPage } from 'next';
 import { getIronSession } from 'iron-session';
 import { sessionOptions, SessionUser } from '@/lib/session';
-import { getAllHelpers, getAllStaff } from '@/lib/sheets';
+import { getAllHelpers } from '@/lib/sheets';
+import { getAllUsers } from '@/lib/users';
 import DashboardLayout from '@/components/DashboardLayout';
 
 import {
@@ -14,12 +15,13 @@ import {
 } from '@mui/material';
 
 import PeopleIcon from '@mui/icons-material/People';
-import BadgeIcon from '@mui/icons-material/Badge';
+import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 
 interface DashboardMetrics {
   totalHelpers: number;
-  totalStaff: number;
+  totalUsers: number;
+  activeUsers: number;
   totalOutstandingLoans: number;
 }
 
@@ -37,10 +39,16 @@ const Dashboard: NextPage<DashboardProps> = ({ metrics }) => {
       iconColor: '#3b82f6',
     },
     {
-      title: 'Staff Members',
-      value: metrics.totalStaff || 0,
-      icon: <BadgeIcon />,
+      title: 'System Users',
+      value: metrics.totalUsers || 0,
+      icon: <AdminPanelSettingsIcon />,
       iconColor: '#10b981',
+    },
+    {
+      title: 'Active Users',
+      value: metrics.activeUsers || 0,
+      icon: <AdminPanelSettingsIcon />,
+      iconColor: '#22c55e',
     },
     {
       title: 'Outstanding Loans',
@@ -133,15 +141,16 @@ export const getServerSideProps: GetServerSideProps<DashboardProps> = async ({ r
   }
 
   try {
-    // Fetch data from Google Sheets
-    const [helpersData, staffData] = await Promise.all([
+    // Fetch data from Google Sheets and Users
+    const [helpersData, usersData] = await Promise.all([
       getAllHelpers(),
-      getAllStaff(),
+      getAllUsers(),
     ]);
 
     // Calculate metrics
     const totalHelpers = helpersData.length;
-    const totalStaff = staffData.length;
+    const totalUsers = usersData.length;
+    const activeUsers = usersData.filter(user => user.status === 'active').length;
     
     // Calculate total outstanding loans
     const totalOutstandingLoans = helpersData.reduce((sum, helper) => {
@@ -151,7 +160,8 @@ export const getServerSideProps: GetServerSideProps<DashboardProps> = async ({ r
 
     const metrics: DashboardMetrics = {
       totalHelpers,
-      totalStaff,
+      totalUsers,
+      activeUsers,
       totalOutstandingLoans,
     };
 
@@ -170,7 +180,8 @@ export const getServerSideProps: GetServerSideProps<DashboardProps> = async ({ r
         user: session.user,
         metrics: {
           totalHelpers: 0,
-          totalStaff: 0,
+          totalUsers: 0,
+          activeUsers: 0,
           totalOutstandingLoans: 0,
         },
       },

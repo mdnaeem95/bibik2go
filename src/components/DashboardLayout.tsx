@@ -1,3 +1,4 @@
+// src/components/DashboardLayout.tsx (UPDATED)
 import React, { ReactNode } from 'react';
 import { useRouter } from 'next/router';
 import { useState } from 'react';
@@ -26,7 +27,7 @@ import {
 
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import GroupIcon from '@mui/icons-material/Group';
-import BadgeIcon from '@mui/icons-material/Badge';
+import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import ReportProblemIcon from '@mui/icons-material/ReportProblem';
 import SettingsIcon from '@mui/icons-material/Settings';
 import LogoutIcon from '@mui/icons-material/Logout';
@@ -61,10 +62,10 @@ const navItems = [
     badge: 'new'
   },
   { 
-    text: 'Staff', 
-    href: '/staff', 
-    icon: <BadgeIcon />,
-    description: 'Internal team management'
+    text: 'Users', 
+    href: '/users', 
+    icon: <AdminPanelSettingsIcon />,
+    description: 'User & staff management'
   },
   { 
     text: 'Settings', 
@@ -83,8 +84,8 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
 
   const handleLogout = async () => {
     setLoggingOut(true);
-    await fetch ('/api/logout', { method: 'POST' });
-    router.push('login');
+    await fetch('/api/logout', { method: 'POST' });
+    router.push('/login');
   }
 
   const handleDrawerToggle = () => {
@@ -93,6 +94,10 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
 
   const isActiveRoute = (href: string) => {
     if (href === '/') return router.pathname === '/';
+    // Handle both /staff and /users routes as active for Users
+    if (href === '/users') {
+      return router.pathname.startsWith('/users') || router.pathname.startsWith('/staff');
+    }
     return router.pathname.startsWith(href);
   };
 
