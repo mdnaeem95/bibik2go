@@ -16,6 +16,7 @@ export interface Helper {
   totalEmployers: number;
   eaOfficer: string;
   outstandingLoan: number;
+  employmentStartDate: string;
 }
 
 export default async function handler(
@@ -46,6 +47,7 @@ export default async function handler(
         totalEmployers: Number(r.totalEmployers),
         eaOfficer: r.eaOfficer,
         outstandingLoan: Number(r.outstandingLoan),
+        employmentStartDate: r.employmentStartDate
       }));
       return res.status(200).json(helpers);
     }

@@ -24,6 +24,7 @@ interface FormData {
   totalEmployers: string;     // keep as string for easy TextField binding
   eaOfficer: string;
   outstandingLoan: string;
+  employmentStartDate: string;
 }
 
 const NewHelperPage: NextPage = () => {
@@ -35,6 +36,7 @@ const NewHelperPage: NextPage = () => {
     totalEmployers: '',
     eaOfficer: '',
     outstandingLoan: '',
+    employmentStartDate: '',
   });
   const [errors, setErrors] = useState<Partial<FormData>>({});
   const [submitError, setSubmitError] = useState('');
@@ -50,6 +52,18 @@ const NewHelperPage: NextPage = () => {
     if (!form.eaOfficer.trim()) errs.eaOfficer = 'EA Officer is required';
     if (!/^\d+$/.test(form.outstandingLoan))
       errs.outstandingLoan = 'Must be a number';
+    if (!form.employmentStartDate) errs.employmentStartDate = 'Employment start date is required';
+
+    // validate employment start date is not in future
+    if (form.employmentStartDate) {
+      const startDate = new Date(form.employmentStartDate);
+      const today = new Date();
+      today.setHours(23, 59, 59, 999); // Set to end of today
+      if (startDate > today) {
+        errs.employmentStartDate = 'Employment start date cannot be in the future';
+      }
+    }
+
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -80,6 +94,7 @@ const NewHelperPage: NextPage = () => {
           totalEmployers: Number(form.totalEmployers),
           eaOfficer: form.eaOfficer,
           outstandingLoan: Number(form.outstandingLoan),
+          employmentStartDate: form.employmentStartDate,
         }),
       });
       if (!res.ok) {
@@ -124,6 +139,20 @@ const NewHelperPage: NextPage = () => {
             error={!!errors.currentEmployer}
             helperText={errors.currentEmployer}
             fullWidth
+          />
+
+          <TextField
+            label="Employment Start Date"
+            type="date"
+            value={form.employmentStartDate}
+            onChange={onChange('employmentStartDate')}
+            error={!!errors.employmentStartDate}
+            helperText={errors.employmentStartDate}
+            fullWidth
+            required
+            InputLabelProps={{
+              shrink: true,
+            }}
           />
 
           <TextField

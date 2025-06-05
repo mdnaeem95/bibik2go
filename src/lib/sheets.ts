@@ -31,6 +31,7 @@ export type RawHelperRow = {
   totalEmployers: string;
   eaOfficer: string;
   outstandingLoan: string;
+  employmentStartDate: string;
 };
 
 export type HelperRow =
@@ -44,6 +45,7 @@ export interface NewHelper {
   totalEmployers: number;
   eaOfficer: string;
   outstandingLoan: number;
+  employmentStartDate: string;
 }
 
 // 4) Fetch & type rows as intersection so TS knows about column props
@@ -72,6 +74,7 @@ export async function addHelper(helper: NewHelper): Promise<GoogleSpreadsheetRow
     totalEmployers: helper.totalEmployers.toString(),
     eaOfficer: helper.eaOfficer,
     outstandingLoan: helper.outstandingLoan.toString(),
+    employmentStartDate: helper.employmentStartDate,
   });
   return row as GoogleSpreadsheetRow<RawHelperRow> & RawHelperRow;
 }
@@ -99,6 +102,7 @@ export async function updateHelper(id: string, helper: Partial<NewHelper>) {
   if (helper.totalEmployers !== undefined) row.set('totalEmployers', String(helper.totalEmployers));
   if (helper.eaOfficer !== undefined) row.set('eaOfficer', helper.eaOfficer);
   if (helper.outstandingLoan !== undefined) row.set('outstandingLoan', String(helper.outstandingLoan));
+  if (helper.employmentStartDate !== undefined) row.set('employmentStartDate', helper.employmentStartDate);
 
   await row.save();
 }

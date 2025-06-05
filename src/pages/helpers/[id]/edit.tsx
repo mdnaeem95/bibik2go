@@ -27,6 +27,7 @@ interface HelperProp {
   totalEmployers: number;
   eaOfficer: string;
   outstandingLoan: number;
+  employmentStartDate: string;
 }
 
 interface FormData {
@@ -36,6 +37,7 @@ interface FormData {
   totalEmployers: string;
   eaOfficer: string;
   outstandingLoan: string;
+  employmentStartDate: string;
 }
 
 interface Props {
@@ -53,6 +55,7 @@ const EditHelperPage: NextPage<Props> = ({ helper }) => {
     totalEmployers: String(helper.totalEmployers),
     eaOfficer: helper.eaOfficer,
     outstandingLoan: String(helper.outstandingLoan),
+    employmentStartDate: helper.employmentStartDate,
   });
   const [errors, setErrors] = useState<Partial<FormData>>({});
   const [submitError, setSubmitError] = useState('');
@@ -66,6 +69,17 @@ const EditHelperPage: NextPage<Props> = ({ helper }) => {
     if (!/^\d+$/.test(form.totalEmployers)) errs.totalEmployers = 'Must be a number';
     if (!form.eaOfficer.trim()) errs.eaOfficer = 'EA Officer is required';
     if (!/^\d+$/.test(form.outstandingLoan)) errs.outstandingLoan = 'Must be a number';
+    if (!form.employmentStartDate) errs.employmentStartDate = 'Employment start date is required';
+
+    // Validate employment start date is not in the future
+    if (form.employmentStartDate) {
+      const startDate = new Date(form.employmentStartDate);
+      const today = new Date();
+      today.setHours(23, 59, 59, 999); // Set to end of today
+      if (startDate > today) {
+        errs.employmentStartDate = 'Employment start date cannot be in the future';
+      }
+    }
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -92,6 +106,7 @@ const EditHelperPage: NextPage<Props> = ({ helper }) => {
           totalEmployers: Number(form.totalEmployers),
           eaOfficer: form.eaOfficer,
           outstandingLoan: Number(form.outstandingLoan),
+          employmentStartDate: form.employmentStartDate,
         }),
       });
       if (!res.ok) {
@@ -139,6 +154,20 @@ const EditHelperPage: NextPage<Props> = ({ helper }) => {
             error={!!errors.currentEmployer}
             helperText={errors.currentEmployer}
             fullWidth
+          />
+
+          <TextField
+            label="Employment Start Date"
+            type="date"
+            value={form.employmentStartDate}
+            onChange={onChange('employmentStartDate')}
+            error={!!errors.employmentStartDate}
+            helperText={errors.employmentStartDate}
+            fullWidth
+            required
+            InputLabelProps={{
+              shrink: true,
+            }}
           />
 
           <TextField
@@ -218,6 +247,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, 
         totalEmployers: Number(row.totalEmployers),
         eaOfficer: row.eaOfficer,
         outstandingLoan: Number(row.outstandingLoan),
+        employmentStartDate: row.employmentStartDate,
       },
     },
   };

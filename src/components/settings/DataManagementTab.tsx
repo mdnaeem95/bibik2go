@@ -43,7 +43,7 @@ export default function DataManagementTab() {
   };
 
   return (
-    <Box sx={{ maxWidth: 800, px: 3 }}>
+    <Box sx={{ px: 3 }}>
       <Typography variant="h6" gutterBottom>
         Data Export & Backup
       </Typography>
