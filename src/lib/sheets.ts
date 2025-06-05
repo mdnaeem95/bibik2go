@@ -18,6 +18,8 @@ async function getSheet() {
   return sheet;
 }
 
+// --------- HELPERS ----------------
+
 export type Helper = RawHelperRow;
 
 // 3) Raw sheet row shape (all strings)
@@ -113,87 +115,6 @@ export async function deleteHelper(id: string) {
   );
   if (!row) throw new Error(`Helper with id ${id} not found`);
 
-  await row.delete();
-}
-
-// --------- STAFF ----------------
-export type Staff = RawStaffRow;
-
-export type RawStaffRow = {
-  id: string;
-  name: string;
-  role: string;
-  email: string;
-  contact: string;
-};
-
-export interface NewStaff {
-  name: string;
-  role: string;
-  email: string;
-  contact: string;
-}
-
-export async function getStaffSheet() {
-  await doc.loadInfo();
-  const sheet = doc.sheetsByTitle['Staff'];
-  if (!sheet) throw new Error('Staff sheet not found');
-  return sheet;
-}
-
-export async function getAllStaff(): Promise<RawStaffRow[]> {
-  const sheet = await getStaffSheet();
-  await sheet.loadHeaderRow(); // this was crucial for helpers
-  const rows = await sheet.getRows();
-  const headers = sheet.headerValues;
-
-  return rows.map((row) => {
-    const raw: string[] = (row as any)._rawData;
-    const obj: any = {};
-    headers.forEach((h, idx) => {
-      obj[h] = raw[idx] ?? '';
-    });
-    return obj as RawStaffRow;
-  });
-}
-
-export async function addStaff(staff: NewStaff): Promise<RawStaffRow> {
-  const sheet = await getStaffSheet();
-  const row = await sheet.addRow({
-    id: Date.now().toString(),
-    ...staff,
-  });
-  return row as any;
-}
-
-export async function updateStaff(id: string, staff: Partial<NewStaff>) {
-  const sheet = await getStaffSheet();
-  await sheet.loadHeaderRow();
-  const headers = sheet.headerValues;
-  const idCol = headers.indexOf('id');
-  if (idCol < 0) throw new Error('Sheet is missing "id" column');
-
-  const rows = await sheet.getRows();
-  const row = rows.find((r) => (r as any)._rawData[idCol] === id);
-  if (!row) throw new Error(`Staff with id ${id} not found`);
-
-  headers.forEach((key) => {
-    if (key !== 'id' && staff[key as keyof NewStaff] !== undefined) {
-      (row as any)[key] = staff[key as keyof NewStaff];
-    }
-  });
-
-  await row.save();
-}
-
-export async function deleteStaff(id: string) {
-  const sheet = await getStaffSheet();
-  await sheet.loadHeaderRow();
-  const headers = sheet.headerValues;
-  const idCol = headers.indexOf('id');
-  const rows = await sheet.getRows();
-  const row = rows.find((r) => (r as any)._rawData[idCol] === id);
-  if (!row) throw new Error(`Staff with id ${id} not found`);
   await row.delete();
 }
 
