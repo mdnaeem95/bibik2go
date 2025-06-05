@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { JWT } from 'google-auth-library';
 import { GoogleSpreadsheet } from 'google-spreadsheet';
 import bcrypt from 'bcrypt';
@@ -29,6 +30,15 @@ export interface NewUser {
   password: string;
   role: UserRole;
   createdBy: string;
+}
+
+export interface UserUpdate {
+  username?: string;
+  email?: string;
+  hashedPassword?: string;
+  role?: UserRole;
+  status?: UserStatus;
+  createdBy?: string;
 }
 
 async function getUsersSheet() {
@@ -177,4 +187,27 @@ export async function deleteUser(userId: string) {
   if (!row) throw new Error('User not found');
   
   await row.delete();
+}
+
+export async function updateUser(username: string, updates: Partial<NewUser>) {
+  const sheet = await getUsersSheet();
+  await sheet.loadHeaderRow();
+  const headers = sheet.headerValues;
+  const usernameCol = headers.indexOf('username');
+  
+  if (usernameCol < 0) throw new Error('Sheet is missing "username" column');
+
+  const rows = await sheet.getRows();
+  const row = rows.find((r) => (r as any)._rawData[usernameCol] === username);
+  
+  if (!row) throw new Error(`User with username ${username} not found`);
+
+  // Update fields
+  Object.keys(updates).forEach(key => {
+    if (updates[key as keyof NewUser] !== undefined) {
+      row.set(key, updates[key as keyof NewUser]);
+    }
+  });
+
+  await row.save();
 }
