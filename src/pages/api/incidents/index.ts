@@ -1,10 +1,12 @@
 // src/pages/api/incidents/index.ts
 import type { NextApiRequest, NextApiResponse } from 'next';
+import { getIronSession } from 'iron-session';
 import {
   getAllIncidents,
   addIncident,
   NewIncident,
 } from '@/lib/sheets';
+import { sessionOptions, SessionUser, canCreate } from '@/lib/session';
 
 export interface Incident {
   id: string;
@@ -23,7 +25,20 @@ export default async function handler(
   res: NextApiResponse<Incident[] | { id: string } | { error: string }>
 ) {
   try {
+    // Get session for all requests
+    const session = await getIronSession<{ user?: SessionUser }>(
+      req,
+      res,
+      sessionOptions
+    );
+
+    // Check if user is authenticated
+    if (!session.user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
     if (req.method === 'GET') {
+      // All authenticated users can view incidents
       const { helperId } = req.query;
       
       const rawRows = await getAllIncidents();
@@ -51,6 +66,13 @@ export default async function handler(
     }
 
     if (req.method === 'POST') {
+      // Check if user can create incidents
+      if (!canCreate(session.user.role)) {
+        return res.status(403).json({ 
+          error: 'Insufficient permissions. Staff or Admin role required to create incidents.' 
+        });
+      }
+
       const payload = req.body as NewIncident;
       const newRow = await addIncident(payload);
       return res.status(201).json({ id: newRow.id });

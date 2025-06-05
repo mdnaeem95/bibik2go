@@ -21,13 +21,18 @@ import {
   Tooltip,
   Paper,
   Divider,
+  Skeleton,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import PersonIcon from '@mui/icons-material/Person';
 import FilterListIcon from '@mui/icons-material/FilterList';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import toast from 'react-hot-toast';
 
 import DashboardLayout from '@/components/DashboardLayout';
-import { sessionOptions, SessionUser } from '@/lib/session';
+import { sessionOptions, SessionUser, canCreate, canEdit, canDelete } from '@/lib/session';
 import { getAllHelpers } from '@/lib/sheets';
 
 interface Incident {
@@ -72,13 +77,43 @@ const getStatusColor = (status: string) => {
   }
 };
 
-const IncidentsPage: NextPage<Props> = ({ helpers }) => {
+// Loading skeleton component for incident cards
+const IncidentCardSkeleton = () => (
+  <Card sx={{ height: 380 }}> {/* Match the fixed height */}
+    <CardContent sx={{ p: 3 }}>
+      <Box display="flex" gap={1} mb={2}>
+        <Skeleton variant="rectangular" width={60} height={24} sx={{ borderRadius: 1 }} />
+        <Skeleton variant="rectangular" width={80} height={24} sx={{ borderRadius: 1 }} />
+      </Box>
+      <Skeleton variant="text" width="80%" height={32} sx={{ mb: 1 }} />
+      <Skeleton variant="text" width="60%" height={20} sx={{ mb: 2 }} />
+      <Skeleton variant="rectangular" width="100%" height={1} sx={{ mb: 2 }} />
+      <Skeleton variant="text" width="40%" height={16} sx={{ mb: 1 }} />
+      <Skeleton variant="rectangular" width="100%" height={72} sx={{ mb: 2 }} /> {/* Match description height */}
+      <Skeleton variant="rectangular" width="100%" height={1} sx={{ mb: 2 }} />
+      <Box display="flex" justifyContent="space-between">
+        <Skeleton variant="text" width="40%" height={16} />
+        <Skeleton variant="text" width="30%" height={16} />
+      </Box>
+    </CardContent>
+  </Card>
+);
+
+const IncidentsPage: NextPage<Props> = ({ user, helpers }) => {
   const router = useRouter();
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [severityFilter, setSeverityFilter] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>('');
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [viewingHelperFromIncidentId, setViewingHelperFromIncidentId] = useState<string | null>(null);
+  const [viewingIncidentId, setViewingIncidentId] = useState<string | null>(null);
+
+  // Check user permissions
+  const userCanCreate = canCreate(user.role);
+  const userCanEdit = canEdit(user.role);
+  const userCanDelete = canDelete(user.role);
 
   const fetchIncidents = async () => {
     setLoading(true);
@@ -90,6 +125,7 @@ const IncidentsPage: NextPage<Props> = ({ helpers }) => {
       }
     } catch (err) {
       console.error('Failed to fetch incidents:', err);
+      toast.error('Failed to load incidents');
     } finally {
       setLoading(false);
     }
@@ -124,14 +160,52 @@ const IncidentsPage: NextPage<Props> = ({ helpers }) => {
   });
 
   const handleAddIncident = () => {
+    if (!userCanCreate) {
+      toast.error('You need Staff or Admin role to add incidents');
+      return;
+    }
     router.push('/incidents/add');
   };
 
-  const handleViewHelper = (helperId: string) => {
+  const handleEditIncident = (incidentId: string, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent card click
+    if (!userCanEdit) {
+      toast.error('You need Staff or Admin role to edit incidents');
+      return;
+    }
+    router.push(`/incidents/${incidentId}/edit`);
+  };
+
+  const handleDeleteIncident = async (incidentId: string, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent card click
+    if (!userCanDelete) {
+      toast.error('You need Staff or Admin role to delete incidents');
+      return;
+    }
+    
+    if (!confirm('Are you sure you want to delete this incident?')) return;
+    
+    setDeletingId(incidentId);
+    try {
+      await fetch(`/api/incidents/${incidentId}`, { method: 'DELETE' });
+      toast.success('Incident deleted successfully!');
+      setIncidents(prev => prev.filter(i => i.id !== incidentId));
+    } catch (err) {
+      console.error('Error deleting incident:', err);
+      toast.error('Failed to delete incident');
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const handleViewHelper = (helperId: string, incidentId: string, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent card click
+    setViewingHelperFromIncidentId(incidentId);
     router.push(`/helpers/${helperId}`);
   };
 
   const handleViewIncident = (incidentId: string) => {
+    setViewingIncidentId(incidentId);
     router.push(`/incidents/${incidentId}`);
   };
 
@@ -155,15 +229,20 @@ const IncidentsPage: NextPage<Props> = ({ helpers }) => {
             <Typography variant="body1" color="text.secondary">
               Track and manage all helper incidents
             </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+              Logged in as <strong>{user.username}</strong> ({user.role})
+            </Typography>
           </Box>
-          <Button 
-            variant="contained" 
-            startIcon={<AddIcon />}
-            onClick={handleAddIncident}
-            size="large"
-          >
-            Add Incident
-          </Button>
+          {userCanCreate && (
+            <Button 
+              variant="contained" 
+              startIcon={<AddIcon />}
+              onClick={handleAddIncident}
+              size="large"
+            >
+              Add Incident
+            </Button>
+          )}
         </Box>
       </Box>
 
@@ -189,6 +268,7 @@ const IncidentsPage: NextPage<Props> = ({ helpers }) => {
               onChange={(e) => setSearch(e.target.value)}
               fullWidth
               placeholder="Helper name, description, or reporter..."
+              disabled={loading}
             />
           </Grid>
 
@@ -199,6 +279,7 @@ const IncidentsPage: NextPage<Props> = ({ helpers }) => {
                 value={severityFilter}
                 label="Severity"
                 onChange={(e) => setSeverityFilter(e.target.value)}
+                disabled={loading}
               >
                 <MenuItem value="">All Severities</MenuItem>
                 <MenuItem value="Low">Low</MenuItem>
@@ -216,6 +297,7 @@ const IncidentsPage: NextPage<Props> = ({ helpers }) => {
                 value={statusFilter}
                 label="Status"
                 onChange={(e) => setStatusFilter(e.target.value)}
+                disabled={loading}
               >
                 <MenuItem value="">All Statuses</MenuItem>
                 <MenuItem value="Open">Open</MenuItem>
@@ -228,26 +310,32 @@ const IncidentsPage: NextPage<Props> = ({ helpers }) => {
       </Paper>
 
       {/* Results Summary */}
-      <Box sx={{ mb: 2 }}>
-        <Typography variant="body2" color="text.secondary">
-          Showing <strong>{filteredIncidents.length}</strong> of <strong>{incidents.length}</strong> incidents
-          {hasActiveFilters && (
-            <Chip 
-              label="Filtered" 
-              size="small" 
-              color="primary" 
-              sx={{ ml: 1 }}
-              onDelete={clearFilters}
-            />
-          )}
-        </Typography>
-      </Box>
+      {!loading && (
+        <Box sx={{ mb: 2 }}>
+          <Typography variant="body2" color="text.secondary">
+            Showing <strong>{filteredIncidents.length}</strong> of <strong>{incidents.length}</strong> incidents
+            {hasActiveFilters && (
+              <Chip 
+                label="Filtered" 
+                size="small" 
+                color="primary" 
+                sx={{ ml: 1 }}
+                onDelete={clearFilters}
+              />
+            )}
+          </Typography>
+        </Box>
+      )}
 
       {/* Content */}
       {loading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
-          <CircularProgress size={40} />
-        </Box>
+        <Grid container spacing={3}>
+          {[...Array(6)].map((_, index) => (
+            <Grid key={index}>
+              <IncidentCardSkeleton />
+            </Grid>
+          ))}
+        </Grid>
       ) : filteredIncidents.length === 0 ? (
         <Paper sx={{ p: 6, textAlign: 'center' }} elevation={1}>
           <Typography variant="h6" color="text.secondary" gutterBottom>
@@ -255,84 +343,188 @@ const IncidentsPage: NextPage<Props> = ({ helpers }) => {
           </Typography>
           <Typography variant="body2" color="text.secondary" mb={3}>
             {incidents.length === 0 
-              ? 'Start by adding your first incident report to track helper issues.'
+              ? (userCanCreate 
+                  ? 'Start by adding your first incident report to track helper issues.'
+                  : 'No incident reports have been created yet.'
+                )
               : 'Try adjusting your search criteria or clearing the filters.'
             }
           </Typography>
-          {incidents.length === 0 ? (
+          {incidents.length === 0 && userCanCreate ? (
             <Button variant="contained" onClick={handleAddIncident}>
               Add First Incident
             </Button>
-          ) : (
+          ) : incidents.length > 0 ? (
             <Button variant="outlined" onClick={clearFilters}>
               Clear Filters
             </Button>
-          )}
+          ) : null}
         </Paper>
       ) : (
-        <Grid container spacing={3}>
+        <Box sx={{ 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+          gap: 3
+        }}>
           {filteredIncidents.map((incident) => (
-            <Grid key={incident.id}>
-              <Card 
-                sx={{ 
-                  height: '100%', 
-                  display: 'flex', 
-                  flexDirection: 'column',
-                  transition: 'transform 0.2s, box-shadow 0.2s',
-                  '&:hover': {
-                    transform: 'translateY(-2px)',
-                    boxShadow: 3,
-                  },
-                }}
-                onClick={() => handleViewIncident(incident.id)}
-              >
-                <CardContent sx={{ flex: 1, p: 3 }}>
-                  {/* Header with chips and action */}
-                  <Box display="flex" justifyContent="between" alignItems="flex-start" mb={2}>
-                    <Box display="flex" gap={1} flexWrap="wrap">
-                      <Chip 
-                        label={incident.severity} 
-                        color={getSeverityColor(incident.severity) as any}
-                        size="small" 
-                      />
-                      <Chip 
-                        label={incident.status} 
-                        color={getStatusColor(incident.status) as any}
-                        size="small" 
-                      />
-                    </Box>
+            <Card 
+              key={incident.id}
+              sx={{ 
+                height: 380, // Fixed height for all cards
+                display: 'flex', 
+                flexDirection: 'column',
+                transition: 'transform 0.2s, box-shadow 0.2s',
+                cursor: 'pointer',
+                '&:hover': {
+                  transform: 'translateY(-2px)',
+                  boxShadow: 3,
+                },
+              }}
+              onClick={() => handleViewIncident(incident.id)}
+            >
+              <CardContent sx={{ 
+                flex: 1, 
+                p: 3, 
+                display: 'flex', 
+                flexDirection: 'column',
+                height: '100%'
+              }}>
+                {/* Header with chips and actions */}
+                <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={2}>
+                  <Box display="flex" gap={1} flexWrap="wrap">
+                    <Chip 
+                      label={incident.severity} 
+                      color={getSeverityColor(incident.severity) as any}
+                      size="small" 
+                    />
+                    <Chip 
+                      label={incident.status} 
+                      color={getStatusColor(incident.status) as any}
+                      size="small" 
+                    />
+                  </Box>
+                  <Box display="flex" gap={0.5}>
+                    {/* View Helper */}
                     <Tooltip title="View Helper Profile">
                       <IconButton 
                         size="small" 
-                        onClick={() => handleViewHelper(incident.helperId)}
-                        sx={{ ml: 1 }}
+                        onClick={(e) => handleViewHelper(incident.helperId, incident.id, e)}
+                        disabled={viewingHelperFromIncidentId === incident.id}
                       >
-                        <PersonIcon fontSize="small" />
+                        {viewingHelperFromIncidentId === incident.id ? (
+                          <CircularProgress size={16} />
+                        ) : (
+                          <PersonIcon fontSize="small" />
+                        )}
+                      </IconButton>
+                    </Tooltip>
+                    
+                    {/* Edit - only show if user can edit */}
+                    {userCanEdit ? (
+                      <Tooltip title="Edit Incident">
+                        <IconButton 
+                          size="small" 
+                          onClick={(e) => handleEditIncident(incident.id, e)}
+                        >
+                          <EditIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    ) : (
+                      <Tooltip title="Edit (Staff/Admin Only)">
+                        <span>
+                          <IconButton size="small" disabled>
+                            <EditIcon fontSize="small" />
+                          </IconButton>
+                        </span>
+                      </Tooltip>
+                    )}
+                    
+                    {/* Delete - only show if user can delete */}
+                    {userCanDelete ? (
+                      <Tooltip title="Delete Incident">
+                        <IconButton 
+                          size="small" 
+                          onClick={(e) => handleDeleteIncident(incident.id, e)}
+                          disabled={deletingId === incident.id}
+                        >
+                          {deletingId === incident.id ? (
+                            <CircularProgress size={16} />
+                          ) : (
+                            <DeleteIcon fontSize="small" />
+                          )}
+                        </IconButton>
+                      </Tooltip>
+                    ) : (
+                      <Tooltip title="Delete (Staff/Admin Only)">
+                        <span>
+                          <IconButton size="small" disabled>
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
+                        </span>
+                      </Tooltip>
+                    )}
+                    
+                    {/* View - always available */}
+                    <Tooltip title="View Details">
+                      <IconButton 
+                        size="small" 
+                        onClick={() => handleViewIncident(incident.id)}
+                        disabled={viewingIncidentId === incident.id}
+                      >
+                        {viewingIncidentId === incident.id ? (
+                          <CircularProgress size={16} />
+                        ) : (
+                          <VisibilityIcon fontSize="small" />
+                        )}
                       </IconButton>
                     </Tooltip>
                   </Box>
+                </Box>
 
-                  {/* Helper Info */}
-                  <Typography variant="h6" gutterBottom fontWeight={600}>
-                    {getHelperName(incident.helperId)}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary" gutterBottom>
-                    Employer: {getHelperEmployer(incident.helperId)}
-                  </Typography>
+                {/* Helper Info */}
+                <Typography 
+                  variant="h6" 
+                  gutterBottom 
+                  fontWeight={600}
+                  sx={{
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  {getHelperName(incident.helperId)}
+                </Typography>
+                <Typography 
+                  variant="body2" 
+                  color="text.secondary" 
+                  gutterBottom
+                  sx={{
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  Employer: {getHelperEmployer(incident.helperId)}
+                </Typography>
 
-                  <Divider sx={{ my: 2 }} />
+                <Divider sx={{ my: 2 }} />
 
-                  {/* Incident Details */}
-                  <Typography variant="body2" color="text.secondary" gutterBottom>
-                    <strong>Date:</strong> {new Date(incident.incidentDate).toLocaleDateString()}
-                  </Typography>
+                {/* Incident Details */}
+                <Typography variant="body2" color="text.secondary" gutterBottom>
+                  <strong>Date:</strong> {new Date(incident.incidentDate).toLocaleDateString()}
+                </Typography>
 
+                {/* Description with fixed height */}
+                <Box sx={{ 
+                  height: '100px', // Fixed height for description
+                  overflow: 'hidden',
+                  mb: 2
+                }}>
                   <Typography 
                     variant="body1" 
                     sx={{ 
-                      mb: 2, 
                       display: '-webkit-box', 
-                      '-webkit-line-clamp': 3, 
+                      '-webkit-line-clamp': 4, 
                       '-webkit-box-orient': 'vertical', 
                       overflow: 'hidden',
                       lineHeight: 1.5,
@@ -340,24 +532,33 @@ const IncidentsPage: NextPage<Props> = ({ helpers }) => {
                   >
                     {incident.description}
                   </Typography>
+                </Box>
 
-                  {/* Footer */}
-                  <Box mt="auto">
-                    <Divider sx={{ mb: 2 }} />
-                    <Box display="flex" justifyContent="between" alignItems="center">
-                      <Typography variant="body2" color="text.secondary">
-                        <strong>Reporter:</strong> {incident.reportedBy}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        {new Date(incident.createdAt).toLocaleDateString()}
-                      </Typography>
-                    </Box>
+                {/* Footer - push to bottom */}
+                <Box sx={{ mt: 'auto' }}>
+                  <Divider sx={{ mb: 2 }} />
+                  <Box display="flex" justifyContent="space-between" alignItems="center">
+                    <Typography 
+                      variant="body2" 
+                      color="text.secondary"
+                      sx={{
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                        maxWidth: '120px'
+                      }}
+                    >
+                      <strong>Reporter:</strong> {incident.reportedBy}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {new Date(incident.createdAt).toLocaleDateString()}
+                    </Typography>
                   </Box>
-                </CardContent>
-              </Card>
-            </Grid>
+                </Box>
+              </CardContent>
+            </Card>
           ))}
-        </Grid>
+        </Box>
       )}
     </DashboardLayout>
   );

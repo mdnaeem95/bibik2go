@@ -2,6 +2,7 @@
 import { GetServerSideProps } from 'next';
 import { useRouter } from 'next/router';
 import React, { useState } from 'react';
+import { getIronSession } from 'iron-session';
 import { 
   Box, 
   Typography, 
@@ -43,6 +44,7 @@ import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import toast from 'react-hot-toast';
 
 import DashboardLayout from '@/components/DashboardLayout';
+import { sessionOptions, SessionUser, canEdit, canDelete } from '@/lib/session';
 import { getAllIncidents, getAllHelpers } from '@/lib/sheets';
 
 interface Incident {
@@ -77,6 +79,7 @@ interface MediaFile {
 interface Props {
   incident: Incident | null;
   helper: Helper | null;
+  user: SessionUser;
 }
 
 const getSeverityColor = (severity: string) => {
@@ -108,7 +111,18 @@ const getStatusIcon = (status: string) => {
 };
 
 export const getServerSideProps: GetServerSideProps = async (context) => {
+  const { req, res } = context;
   const id = context.params?.id as string;
+  
+  // Check authentication
+  const session = await getIronSession<{ user?: SessionUser }>(
+    req,
+    res,
+    sessionOptions
+  );
+  if (!session.user) {
+    return { redirect: { destination: '/login', permanent: false } };
+  }
   
   try {
     const [allIncidents, allHelpers] = await Promise.all([
@@ -129,7 +143,8 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
           ...incident,
           mediaUrls: [], // We'll fetch these client-side or add to your sheets
         }, 
-        helper 
+        helper,
+        user: session.user
       },
     };
   } catch (error) {
@@ -138,13 +153,17 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
   }
 };
 
-export default function IncidentDetail({ incident, helper }: Props) {
+export default function IncidentDetail({ incident, helper, user }: Props) {
   const router = useRouter();
   const [deleteDialog, setDeleteDialog] = useState(false);
   const [mediaFiles, setMediaFiles] = useState<MediaFile[]>([]);
   const [mediaLoading, setMediaLoading] = useState(true);
   const [selectedMedia, setSelectedMedia] = useState<MediaFile | null>(null);
   const [fullscreenMedia, setFullscreenMedia] = useState<MediaFile | null>(null);
+
+  // Check user permissions
+  const userCanEdit = canEdit(user.role);
+  const userCanDelete = canDelete(user.role);
 
   // Fetch media files for this incident
   const fetchMediaFiles = async () => {
@@ -176,11 +195,19 @@ export default function IncidentDetail({ incident, helper }: Props) {
   }, [incident]);
 
   const handleEdit = () => {
+    if (!userCanEdit) {
+      toast.error('You need Staff or Admin role to edit incidents');
+      return;
+    }
     router.push(`/incidents/${incident?.id}/edit`);
   };
 
   const handleDelete = async () => {
     if (!incident) return;
+    if (!userCanDelete) {
+      toast.error('You need Staff or Admin role to delete incidents');
+      return;
+    }
     
     try {
       await fetch(`/api/incidents/${incident.id}`, { method: 'DELETE' });
@@ -270,23 +297,56 @@ export default function IncidentDetail({ incident, helper }: Props) {
             <Typography variant="h6" color="text.secondary">
               Reported by {incident.reportedBy} on {new Date(incident.createdAt).toLocaleDateString()}
             </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+              Viewing as <strong>{user.username}</strong> ({user.role})
+            </Typography>
           </Box>
           <Box display="flex" gap={2}>
-            <Button 
-              variant="outlined" 
-              startIcon={<EditIcon />}
-              onClick={handleEdit}
-            >
-              Edit
-            </Button>
-            <Button 
-              variant="outlined" 
-              color="error"
-              startIcon={<DeleteIcon />}
-              onClick={() => setDeleteDialog(true)}
-            >
-              Delete
-            </Button>
+            {userCanEdit ? (
+              <Button 
+                variant="outlined" 
+                startIcon={<EditIcon />}
+                onClick={handleEdit}
+              >
+                Edit
+              </Button>
+            ) : (
+              <Tooltip title="Edit (Staff/Admin Only)">
+                <span>
+                  <Button 
+                    variant="outlined" 
+                    startIcon={<EditIcon />}
+                    disabled
+                  >
+                    Edit
+                  </Button>
+                </span>
+              </Tooltip>
+            )}
+            
+            {userCanDelete ? (
+              <Button 
+                variant="outlined" 
+                color="error"
+                startIcon={<DeleteIcon />}
+                onClick={() => setDeleteDialog(true)}
+              >
+                Delete
+              </Button>
+            ) : (
+              <Tooltip title="Delete (Staff/Admin Only)">
+                <span>
+                  <Button 
+                    variant="outlined" 
+                    color="error"
+                    startIcon={<DeleteIcon />}
+                    disabled
+                  >
+                    Delete
+                  </Button>
+                </span>
+              </Tooltip>
+            )}
           </Box>
         </Box>
 
@@ -572,26 +632,28 @@ export default function IncidentDetail({ incident, helper }: Props) {
       </Dialog>
 
       {/* Delete Confirmation Dialog */}
-      <Dialog open={deleteDialog} onClose={() => setDeleteDialog(false)}>
-        <DialogTitle>Delete Incident</DialogTitle>
-        <DialogContent>
-          <Typography>
-            Are you sure you want to delete this incident? This action cannot be undone.
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDeleteDialog(false)}>
-            Cancel
-          </Button>
-          <Button 
-            onClick={handleDelete} 
-            color="error"
-            variant="contained"
-          >
-            Delete
-          </Button>
-        </DialogActions>
-      </Dialog>
+      {userCanDelete && (
+        <Dialog open={deleteDialog} onClose={() => setDeleteDialog(false)}>
+          <DialogTitle>Delete Incident</DialogTitle>
+          <DialogContent>
+            <Typography>
+              Are you sure you want to delete this incident? This action cannot be undone.
+            </Typography>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setDeleteDialog(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleDelete} 
+              color="error"
+              variant="contained"
+            >
+              Delete
+            </Button>
+          </DialogActions>
+        </Dialog>
+      )}
     </DashboardLayout>
   );
 }

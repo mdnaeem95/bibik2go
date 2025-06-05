@@ -1,14 +1,16 @@
-// src/lib/session.ts (CORRECTED)
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import type { SessionOptions } from 'iron-session';
+import type { UserRole, UserStatus } from '@/lib/users';
 
 export type SessionUser = {
   isLoggedIn: true;
   username: string;
-  role: 'admin' | 'staff' | 'viewer';
+  role: UserRole;
   email: string;
+  status: UserStatus;
+  id: string;
 };
 
-// This extends iron-session to include our custom user property
 declare module 'iron-session' {
   interface IronSessionData {
     user?: SessionUser;
@@ -21,4 +23,33 @@ export const sessionOptions: SessionOptions = {
   cookieOptions: {
     secure: process.env.NODE_ENV === 'production',
   },
+};
+
+// Permission helper functions based on your role definitions
+export const canView = (role: UserRole): boolean => {
+  return true; // All roles can view
+};
+
+export const canCreate = (role: UserRole): boolean => {
+  return role === 'admin' || role === 'staff';
+};
+
+export const canEdit = (role: UserRole): boolean => {
+  return role === 'admin' || role === 'staff';
+};
+
+export const canDelete = (role: UserRole): boolean => {
+  return role === 'admin' || role === 'staff';
+};
+
+export const canUploadMedia = (role: UserRole): boolean => {
+  return role === 'admin' || role === 'staff';
+};
+
+export const canManageUsers = (role: UserRole): boolean => {
+  return role === 'admin';
+};
+
+export const canAccessSettings = (role: UserRole): boolean => {
+  return role === 'admin';
 };

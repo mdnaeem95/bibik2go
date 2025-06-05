@@ -2,6 +2,7 @@
 import { GetServerSideProps } from 'next';
 import { useRouter } from 'next/router';
 import { useState, useEffect } from 'react';
+import { getIronSession } from 'iron-session';
 import { 
   Box, 
   Typography, 
@@ -21,6 +22,7 @@ import {
   Alert,
   Breadcrumbs,
   Link,
+  Tooltip,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -34,6 +36,7 @@ import toast from 'react-hot-toast';
 
 import DashboardLayout from '@/components/DashboardLayout';
 import { getAllHelpers, Helper } from '@/lib/sheets';
+import { sessionOptions, SessionUser, canEdit, canDelete, canCreate } from '@/lib/session';
 
 interface Incident {
   id: string;
@@ -49,6 +52,7 @@ interface Incident {
 
 interface Props {
   helper: Helper | null;
+  user: SessionUser;
 }
 
 const getSeverityColor = (severity: string) => {
@@ -71,7 +75,19 @@ const getStatusColor = (status: string) => {
 };
 
 export const getServerSideProps: GetServerSideProps = async (context) => {
+  const { req, res } = context;
   const id = context.params?.id as string;
+  
+  // Check authentication
+  const session = await getIronSession<{ user?: SessionUser }>(
+    req,
+    res,
+    sessionOptions
+  );
+  if (!session.user) {
+    return { redirect: { destination: '/login', permanent: false } };
+  }
+  
   const allHelpers = await getAllHelpers();
   const helper = allHelpers.find((h) => h.id === id) || null;
 
@@ -80,11 +96,11 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
   }
 
   return {
-    props: { helper },
+    props: { helper, user: session.user },
   };
 };
 
-export default function HelperProfile({ helper }: Props) {
+export default function HelperProfile({ helper, user }: Props) {
   const router = useRouter();
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [loading, setLoading] = useState(true);
@@ -92,6 +108,11 @@ export default function HelperProfile({ helper }: Props) {
     open: false,
     incidentId: null,
   });
+
+  // Check user permissions
+  const userCanEdit = canEdit(user.role);
+  const userCanDelete = canDelete(user.role);
+  const userCanCreate = canCreate(user.role);
 
   const fetchIncidents = async () => {
     if (!helper) return;
@@ -114,10 +135,27 @@ export default function HelperProfile({ helper }: Props) {
   }, [helper]);
 
   const handleAddIncident = () => {
+    if (!userCanCreate) {
+      toast.error('You need Staff or Admin role to add incidents');
+      return;
+    }
     router.push(`/incidents/add?helperId=${helper?.id}`);
   };
 
+  const handleEditProfile = () => {
+    if (!userCanEdit) {
+      toast.error('You need Staff or Admin role to edit profiles');
+      return;
+    }
+    router.push(`/helpers/${helper?.id}/edit?returnTo=/helpers/${helper?.id}`);
+  };
+
   const handleDeleteIncident = async (incidentId: string) => {
+    if (!userCanDelete) {
+      toast.error('You need Staff or Admin role to delete incidents');
+      return;
+    }
+    
     try {
       await fetch(`/api/incidents/${incidentId}`, { method: 'DELETE' });
       toast.success('Incident deleted successfully!');
@@ -168,7 +206,7 @@ export default function HelperProfile({ helper }: Props) {
             <Typography variant="h4" gutterBottom fontWeight={600}>
               {helper?.name}
             </Typography>
-            <Box display="flex" gap={1} flexWrap="wrap">
+            <Box display="flex" gap={1} flexWrap="wrap" mb={1}>
               <Chip 
                 icon={<WorkIcon />}
                 label={`${incidents.length} Incidents`}
@@ -182,22 +220,54 @@ export default function HelperProfile({ helper }: Props) {
                 variant="outlined"
               />
             </Box>
+            <Typography variant="body2" color="text.secondary">
+              Viewing as <strong>{user.username}</strong> ({user.role})
+            </Typography>
           </Box>
           <Box display="flex" gap={2}>
-            <Button 
-              variant="outlined" 
-              startIcon={<EditIcon />}
-              onClick={() => router.push(`/helpers/${helper?.id}/edit?returnTo=/helpers/${helper?.id}`)}
-            >
-              Edit Profile
-            </Button>
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={handleAddIncident}
-            >
-              Add Incident
-            </Button>
+            {userCanEdit ? (
+              <Button 
+                variant="outlined" 
+                startIcon={<EditIcon />}
+                onClick={handleEditProfile}
+              >
+                Edit Profile
+              </Button>
+            ) : (
+              <Tooltip title="Edit (Staff/Admin Only)">
+                <span>
+                  <Button 
+                    variant="outlined" 
+                    startIcon={<EditIcon />}
+                    disabled
+                  >
+                    Edit Profile
+                  </Button>
+                </span>
+              </Tooltip>
+            )}
+            
+            {userCanCreate ? (
+              <Button
+                variant="contained"
+                startIcon={<AddIcon />}
+                onClick={handleAddIncident}
+              >
+                Add Incident
+              </Button>
+            ) : (
+              <Tooltip title="Add Incident (Staff/Admin Only)">
+                <span>
+                  <Button
+                    variant="contained"
+                    startIcon={<AddIcon />}
+                    disabled
+                  >
+                    Add Incident
+                  </Button>
+                </span>
+              </Tooltip>
+            )}
           </Box>
         </Box>
 
@@ -293,7 +363,7 @@ export default function HelperProfile({ helper }: Props) {
           <Typography variant="h5" fontWeight={600}>
             Incident History
           </Typography>
-          {incidents.length > 0 && (
+          {incidents.length > 0 && userCanCreate && (
             <Button
               variant="outlined"
               startIcon={<AddIcon />}
@@ -318,9 +388,15 @@ export default function HelperProfile({ helper }: Props) {
                 This helper has a clean record with no reported incidents.
               </Typography>
             </Alert>
-            <Button variant="contained" onClick={handleAddIncident}>
-              Report First Incident
-            </Button>
+            {userCanCreate ? (
+              <Button variant="contained" onClick={handleAddIncident}>
+                Report First Incident
+              </Button>
+            ) : (
+              <Typography variant="body2" color="text.secondary">
+                No incidents to display.
+              </Typography>
+            )}
           </Box>
         ) : (
           <Grid container spacing={3}>
@@ -328,9 +404,9 @@ export default function HelperProfile({ helper }: Props) {
               <Grid key={incident.id}>
                 <Card variant="outlined" sx={{ '&:hover': { boxShadow: 2 } }}>
                   <CardContent sx={{ p: 3 }}>
-                    <Box display="flex" justifyContent="between" alignItems="flex-start" mb={2}>
+                    <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={2}>
                       <Box flex={1}>
-                        <Box display="flex" gap={1} mb={2} flexWrap="wrap">
+                        <Box display="flex" gap={1} mb={2} flexWrap="wrap" alignItems="center">
                           <Chip 
                             label={incident.severity} 
                             color={getSeverityColor(incident.severity) as any}
@@ -346,13 +422,23 @@ export default function HelperProfile({ helper }: Props) {
                             variant="outlined"
                             size="small"
                           />
-                        <IconButton 
-                          size="small" 
-                          color="error"
-                          onClick={() => setDeleteDialog({ open: true, incidentId: incident.id })}
-                        >
-                          <DeleteIcon fontSize="small" />
-                        </IconButton>
+                          {userCanDelete ? (
+                            <IconButton 
+                              size="small" 
+                              color="error"
+                              onClick={() => setDeleteDialog({ open: true, incidentId: incident.id })}
+                            >
+                              <DeleteIcon fontSize="small" />
+                            </IconButton>
+                          ) : (
+                            <Tooltip title="Delete (Staff/Admin Only)">
+                              <span>
+                                <IconButton size="small" disabled>
+                                  <DeleteIcon fontSize="small" />
+                                </IconButton>
+                              </span>
+                            </Tooltip>
+                          )}
                         </Box>
                       </Box>
                     </Box>
@@ -389,26 +475,28 @@ export default function HelperProfile({ helper }: Props) {
       </Paper>
 
       {/* Delete Confirmation Dialog */}
-      <Dialog open={deleteDialog.open} onClose={() => setDeleteDialog({ open: false, incidentId: null })}>
-        <DialogTitle>Delete Incident</DialogTitle>
-        <DialogContent>
-          <Typography>
-            Are you sure you want to delete this incident? This action cannot be undone.
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDeleteDialog({ open: false, incidentId: null })}>
-            Cancel
-          </Button>
-          <Button 
-            onClick={() => deleteDialog.incidentId && handleDeleteIncident(deleteDialog.incidentId)} 
-            color="error"
-            variant="contained"
-          >
-            Delete
-          </Button>
-        </DialogActions>
-      </Dialog>
+      {userCanDelete && (
+        <Dialog open={deleteDialog.open} onClose={() => setDeleteDialog({ open: false, incidentId: null })}>
+          <DialogTitle>Delete Incident</DialogTitle>
+          <DialogContent>
+            <Typography>
+              Are you sure you want to delete this incident? This action cannot be undone.
+            </Typography>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setDeleteDialog({ open: false, incidentId: null })}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={() => deleteDialog.incidentId && handleDeleteIncident(deleteDialog.incidentId)} 
+              color="error"
+              variant="contained"
+            >
+              Delete
+            </Button>
+          </DialogActions>
+          </Dialog>
+      )}
     </DashboardLayout>
   );
 }

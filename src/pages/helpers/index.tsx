@@ -35,7 +35,7 @@ import WarningIcon from '@mui/icons-material/Warning';
 import toast from 'react-hot-toast';
 
 import DashboardLayout from '@/components/DashboardLayout';
-import { sessionOptions, SessionUser } from '@/lib/session';
+import { sessionOptions, SessionUser, canEdit, canDelete, canCreate } from '@/lib/session';
 import type { Helper } from '../api/helpers/index';
 import { useRouter } from 'next/router';
 
@@ -51,7 +51,7 @@ const LOAN_THRESHOLDS = {
   URGENT_FOLLOWUP: 800, // $800+ = Needs urgent follow-up
 };
 
-const Helpers: NextPage<Props> = () => {
+const Helpers: NextPage<Props> = ({ user }) => {
   const router = useRouter();
   const [helpers, setHelpers] = useState<Helper[]>([]);
   const [search, setSearch] = useState('');
@@ -62,6 +62,11 @@ const Helpers: NextPage<Props> = () => {
   const [sortBy, setSortBy] = useState<keyof Helper>('outstandingLoan');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc'); // Default to highest loans first
   const [loanFilter, setLoanFilter] = useState<string>('all');
+
+  // Check user permissions
+  const userCanEdit = canEdit(user.role);
+  const userCanDelete = canDelete(user.role);
+  const userCanCreate = canCreate(user.role);
 
   const fetchHelpers = async () => {
     setLoading(true);
@@ -85,15 +90,28 @@ const Helpers: NextPage<Props> = () => {
   }, []);
 
   const handleAdd = () => {
+    if (!userCanCreate) {
+      toast.error('You need Staff or Admin role to add helpers');
+      return;
+    }
     router.push('/helpers/new');
   };
 
   const handleEdit = (id: string) => {
+    if (!userCanEdit) {
+      toast.error('You need Staff or Admin role to edit helpers');
+      return;
+    }
     setEditingId(id);
     router.push(`/helpers/${id}/edit`);
   };
 
   const handleDelete = async (id: string) => {
+    if (!userCanDelete) {
+      toast.error('You need Staff or Admin role to delete helpers');
+      return;
+    }
+    
     if (!confirm('Are you sure you want to delete this helper?')) return;
     setDeletingId(id);
     try {
@@ -211,10 +229,17 @@ const Helpers: NextPage<Props> = () => {
     <DashboardLayout>
       <Box sx={{ mb: 3 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-          <Typography variant="h4">Helpers</Typography>
-          <Button variant="contained" onClick={handleAdd}>
-            Add Helper
-          </Button>
+          <Box>
+            <Typography variant="h4">Helpers</Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+              Logged in as <strong>{user.username}</strong> ({user.role})
+            </Typography>
+          </Box>
+          {userCanCreate && (
+            <Button variant="contained" onClick={handleAdd}>
+              Add Helper
+            </Button>
+          )}
         </Box>
 
         {/* Loan Summary Cards */}
@@ -318,13 +343,15 @@ const Helpers: NextPage<Props> = () => {
           </Typography>
           <Typography variant="body2" color="textSecondary">
             {helpers.length === 0 
-              ? 'Add your first helper to get started.'
+              ? (userCanCreate ? 'Add your first helper to get started.' : 'No helpers have been added yet.')
               : 'Try adjusting your search or filter criteria.'
             }
           </Typography>
-          <Button variant='contained' sx={{ mt: 2 }} onClick={handleAdd}>
-            Add Helper
-          </Button>
+          {userCanCreate && helpers.length === 0 && (
+            <Button variant='contained' sx={{ mt: 2 }} onClick={handleAdd}>
+              Add Helper
+            </Button>
+            )}
         </Paper>
       ) : (
         <TableContainer component={Paper} elevation={1}>
@@ -398,23 +425,54 @@ const Helpers: NextPage<Props> = () => {
                     </Box>
                   </TableCell>
                   <TableCell align='center'>
-                    <IconButton size="small" onClick={() => handleEdit(h.id)} disabled={editingId === h.id}>
-                      {editingId === h.id ? (
-                        <CircularProgress size={20} />
-                      ): (
-                        <EditIcon fontSize='inherit' />
-                      )}                      
-                    </IconButton>
-                    <IconButton size="small" onClick={() => handleDelete(h.id)} disabled={deletingId === h.id}>
-                      {deletingId === h.id ? (
-                        <CircularProgress size={20} />
-                      ) : (
-                        <DeleteIcon fontSize='inherit' />
-                      )}
-                    </IconButton>
-                    <IconButton size="small" onClick={() => handleView(h.id)} disabled={viewingId === h.id}>
-                      {viewingId === h.id ? <CircularProgress size={20} /> : <VisibilityIcon fontSize="inherit" />}
-                    </IconButton>
+                    {/* Edit button - only show if user can edit */}
+                    {userCanEdit ? (
+                      <Tooltip title="Edit Helper">
+                        <IconButton size="small" onClick={() => handleEdit(h.id)} disabled={editingId === h.id}>
+                          {editingId === h.id ? (
+                            <CircularProgress size={20} />
+                          ): (
+                            <EditIcon fontSize='inherit' />
+                          )}                      
+                        </IconButton>
+                      </Tooltip>
+                    ) : (
+                      <Tooltip title="Edit (Staff/Admin Only)">
+                        <span>
+                          <IconButton size="small" disabled>
+                            <EditIcon fontSize='inherit' />
+                          </IconButton>
+                        </span>
+                      </Tooltip>
+                    )}
+
+                    {/* Delete button - only show if user can delete */}
+                    {userCanDelete ? (
+                      <Tooltip title="Delete Helper">
+                        <IconButton size="small" onClick={() => handleDelete(h.id)} disabled={deletingId === h.id}>
+                          {deletingId === h.id ? (
+                            <CircularProgress size={20} />
+                          ) : (
+                            <DeleteIcon fontSize='inherit' />
+                          )}
+                        </IconButton>
+                      </Tooltip>
+                    ) : (
+                      <Tooltip title="Delete (Staff/Admin Only)">
+                        <span>
+                          <IconButton size="small" disabled>
+                            <DeleteIcon fontSize='inherit' />
+                          </IconButton>
+                        </span>
+                      </Tooltip>
+                    )}
+
+                    {/* View button - always available */}
+                    <Tooltip title="View Helper">
+                      <IconButton size="small" onClick={() => handleView(h.id)} disabled={viewingId === h.id}>
+                        {viewingId === h.id ? <CircularProgress size={20} /> : <VisibilityIcon fontSize="inherit" />}
+                      </IconButton>
+                    </Tooltip>
                   </TableCell>
                 </TableRow>
               ))}
