@@ -194,12 +194,32 @@ const NewHelperPage: NextPage<Props> = ({ user }) => {
       });
 
       if (!helperRes.ok) {
-        const { error } = await helperRes.json();
-        throw new Error(error || 'Failed to create helper');
+        throw new Error('Failed to create helper');
       }
 
-      const { data } = await helperRes.json();
-      console.log('✅ Helper created with ID:', data);
+    // Helper was created successfully, now fetch all helpers to find the one we just created
+    console.log('✅ Helper created successfully, fetching helpers to get ID...');
+    
+    const fetchHelpersRes = await fetch('/api/helpers');
+    if (!fetchHelpersRes.ok) {
+      throw new Error('Failed to fetch helpers after creation');
+    }
+    
+    const allHelpers = await fetchHelpersRes.json();
+    
+    // Find the helper we just created by matching multiple fields to ensure uniqueness
+    const createdHelper = allHelpers.find((h: any) => 
+      h.name === form.name && 
+      h.currentEmployer === form.currentEmployer &&
+      h.eaOfficer === form.eaOfficer
+    );
+    
+    if (!createdHelper) {
+      throw new Error('Helper was created but could not be found in the list');
+    }
+    
+    const helperId = createdHelper.id;
+    console.log('✅ Found helper with ID:', helperId);
 
       // Generate consistent incident ID for media files
       let consistentIncidentId: string;
@@ -212,7 +232,7 @@ const NewHelperPage: NextPage<Props> = ({ user }) => {
       // Then, create the incident with media
       const incidentData = {
         id: consistentIncidentId,
-        helperId: data.helperId,
+        helperId: helperId,
         incidentDate: form.incidentDate,
         description: form.incidentDescription,
         severity: form.severity,
