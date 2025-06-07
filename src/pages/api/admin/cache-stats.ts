@@ -1,6 +1,7 @@
 // Create src/pages/api/admin/cache-stats.ts
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { getCacheStats, cache, cacheHelpers } from '@/lib/cache';
+import { getCacheStats, cacheHelpers } from '@/lib/cache';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === 'GET') {
