@@ -1,4 +1,5 @@
 // src/lib/cache.ts
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { LRUCache } from 'lru-cache';
 
 interface CacheOptions {
