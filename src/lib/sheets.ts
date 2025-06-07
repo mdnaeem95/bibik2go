@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { JWT } from 'google-auth-library';
 import { GoogleSpreadsheet, GoogleSpreadsheetRow } from 'google-spreadsheet';
+import { cache, CacheKeys, cacheHelpers } from './cache';
 
 // 1) JWT auth client
 const jwtClient = new JWT({
@@ -50,17 +51,19 @@ export interface NewHelper {
 
 // 4) Fetch & type rows as intersection so TS knows about column props
 export async function getAllHelpers(): Promise<RawHelperRow[]> {
-  const sheet = await getSheet();
-  const rows = await sheet.getRows();
-  const headers = sheet.headerValues;
+  return cache.getOrSet(CacheKeys.HELPERS, async () => {
+    const sheet = await getSheet();
+    const rows = await sheet.getRows();
+    const headers = sheet.headerValues;
 
-  return rows.map((row) => {
-    const rawData = (row as any)._rawData; // Actual backing array
-    const obj: Record<string, string> = {};
-    headers.forEach((h, i) => {
-      obj[h] = rawData[i] ?? '';
+    return rows.map((row) => {
+      const rawData = (row as any)._rawData;
+      const obj: Record<string, string> = {};
+      headers.forEach((h, i) => {
+        obj[h] = rawData[i] ?? '';
+      });
+      return obj as RawHelperRow;
     });
-    return obj as RawHelperRow;
   });
 }
 
@@ -76,6 +79,10 @@ export async function addHelper(helper: NewHelper): Promise<GoogleSpreadsheetRow
     outstandingLoan: helper.outstandingLoan.toString(),
     employmentStartDate: helper.employmentStartDate,
   });
+
+  // Invalidate related caches
+  cacheHelpers.invalidateHelpers();
+  
   return row as GoogleSpreadsheetRow<RawHelperRow> & RawHelperRow;
 }
 
@@ -88,7 +95,6 @@ export async function updateHelper(id: string, helper: Partial<NewHelper>) {
   if (idCol < 0) throw new Error('Sheet is missing "id" column');
 
   const rows = await sheet.getRows();
-
   const row = rows.find((r) => {
     const rawId = (r as any)._rawData?.[idCol];
     return rawId === id;
@@ -105,8 +111,12 @@ export async function updateHelper(id: string, helper: Partial<NewHelper>) {
   if (helper.employmentStartDate !== undefined) row.set('employmentStartDate', helper.employmentStartDate);
 
   await row.save();
+
+  // Invalidate related caches
+  cacheHelpers.invalidateHelpers();
 }
 
+// Update your deleteHelper function
 export async function deleteHelper(id: string) {
   const sheet = await getSheet();
   const headers = sheet.headerValues;
@@ -120,6 +130,9 @@ export async function deleteHelper(id: string) {
   if (!row) throw new Error(`Helper with id ${id} not found`);
 
   await row.delete();
+
+  // Invalidate related caches
+  cacheHelpers.invalidateHelpers();
 }
 
 // --------- INCIDENTS ----------------
@@ -174,30 +187,36 @@ export async function getIncidentsSheet() {
 }
 
 export async function getAllIncidents(): Promise<RawIncidentRow[]> {
-  const sheet = await getIncidentsSheet();
-  await sheet.loadHeaderRow();
-  const rows = await sheet.getRows();
-  const headers = sheet.headerValues;
+  return cache.getOrSet(CacheKeys.INCIDENTS, async () => {
+    const sheet = await getIncidentsSheet();
+    await sheet.loadHeaderRow();
+    const rows = await sheet.getRows();
+    const headers = sheet.headerValues;
 
-  return rows.map((row) => {
-    const raw: string[] = (row as any)._rawData;
-    const obj: any = {};
-    headers.forEach((h, idx) => {
-      obj[h] = raw[idx] ?? '';
+    return rows.map((row) => {
+      const raw: string[] = (row as any)._rawData;
+      const obj: any = {};
+      headers.forEach((h, idx) => {
+        obj[h] = raw[idx] ?? '';
+      });
+      return obj as RawIncidentRow;
     });
-    return obj as RawIncidentRow;
   });
 }
 
+// Cache incidents by helper ID
 export async function getIncidentsByHelperId(helperId: string): Promise<RawIncidentRow[]> {
-  const allIncidents = await getAllIncidents();
-  return allIncidents.filter(incident => incident.helperId === helperId);
+  const cacheKey = CacheKeys.HELPER_INCIDENTS(helperId);
+  
+  return cache.getOrSet(cacheKey, async () => {
+    const allIncidents = await getAllIncidents();
+    return allIncidents.filter(incident => incident.helperId === helperId);
+  });
 }
 
+// Update incident functions to invalidate cache
 export async function addIncident(incident: NewIncident & { id?: string }): Promise<RawIncidentRow> {
   const sheet = await getIncidentsSheet();
-
-  // use provided Id or generate a new one
   const incidentId = incident.id || Date.now().toString();
 
   const row = await sheet.addRow({
@@ -214,6 +233,10 @@ export async function addIncident(incident: NewIncident & { id?: string }): Prom
 
   // Update helper's problem field with latest incident
   await updateHelperLatestIncident(incident.helperId, incident.description);
+
+  // Invalidate related caches
+  cacheHelpers.invalidateIncidents();
+  cacheHelpers.invalidateHelpers(); // Because helper problem field changed
 
   return row as any;
 }
@@ -243,7 +266,12 @@ export async function updateIncident(id: string, incident: Partial<NewIncident>)
   if (incident.description !== undefined && incident.helperId) {
     await updateHelperLatestIncident(incident.helperId, incident.description);
   }
+
+  // Invalidate related caches
+  cacheHelpers.invalidateIncidents();
+  cacheHelpers.invalidateHelpers();
 }
+
 
 export async function deleteIncident(id: string) {
   const sheet = await getIncidentsSheet();
@@ -260,15 +288,17 @@ export async function deleteIncident(id: string) {
   // Update helper's problem field with their most recent remaining incident
   const remainingIncidents = await getIncidentsByHelperId(helperId);
   if (remainingIncidents.length > 0) {
-    // Sort by createdAt desc and get the latest
     const sortedIncidents = remainingIncidents.sort((a, b) => 
       new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
     await updateHelperLatestIncident(helperId, sortedIncidents[0].description);
   } else {
-    // No incidents left, clear the problem field
     await updateHelper(helperId, { problem: 'No recent incidents' });
   }
+
+  // Invalidate related caches
+  cacheHelpers.invalidateIncidents();
+  cacheHelpers.invalidateHelpers();
 }
 
 // Helper function to update helper's problem field with latest incident

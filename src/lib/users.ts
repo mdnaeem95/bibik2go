@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { cache, CacheKeys, cacheHelpers } from './cache';
 import { JWT } from 'google-auth-library';
 import { GoogleSpreadsheet } from 'google-spreadsheet';
 import bcrypt from 'bcrypt';
@@ -81,20 +82,23 @@ async function getUsersSheet() {
   return sheet;
 }
 
+// Replace your existing getAllUsers function
 export async function getAllUsers(): Promise<User[]> {
-  const sheet = await getUsersSheet();
-  await sheet.loadHeaderRow();
-  const rows = await sheet.getRows();
-  
-  return rows.map(row => ({
-    id: row.get('id'),
-    username: row.get('username'),
-    email: row.get('email'),
-    role: row.get('role') as UserRole,
-    status: row.get('status') as UserStatus,
-    createdAt: row.get('createdAt'),
-    createdBy: row.get('createdBy'),
-  }));
+  return cache.getOrSet(CacheKeys.USERS, async () => {
+    const sheet = await getUsersSheet();
+    await sheet.loadHeaderRow();
+    const rows = await sheet.getRows();
+    
+    return rows.map(row => ({
+      id: row.get('id'),
+      username: row.get('username'),
+      email: row.get('email'),
+      role: row.get('role') as UserRole,
+      status: row.get('status') as UserStatus,
+      createdAt: row.get('createdAt'),
+      createdBy: row.get('createdBy'),
+    }));
+  });
 }
 
 export async function getUserByUsername(username: string) {
@@ -117,6 +121,7 @@ export async function getUserByUsername(username: string) {
   };
 }
 
+// Update createUser to invalidate cache
 export async function createUser(userData: NewUser): Promise<User> {
   const sheet = await getUsersSheet();
   
@@ -142,6 +147,9 @@ export async function createUser(userData: NewUser): Promise<User> {
     createdAt: new Date().toISOString(),
     createdBy: userData.createdBy,
   });
+
+  // Invalidate user cache
+  cacheHelpers.invalidateUsers();
   
   return {
     id,
@@ -154,6 +162,7 @@ export async function createUser(userData: NewUser): Promise<User> {
   };
 }
 
+// Update other user functions to invalidate cache
 export async function updateUserStatus(userId: string, status: UserStatus) {
   const sheet = await getUsersSheet();
   await sheet.loadHeaderRow();
@@ -164,6 +173,9 @@ export async function updateUserStatus(userId: string, status: UserStatus) {
   
   row.set('status', status);
   await row.save();
+
+  // Invalidate user cache
+  cacheHelpers.invalidateUsers();
 }
 
 export async function updateUserRole(userId: string, role: UserRole) {
@@ -176,7 +188,10 @@ export async function updateUserRole(userId: string, role: UserRole) {
   
   row.set('role', role);
   await row.save();
-}
+
+  // Invalidate user cache
+  cacheHelpers.invalidateUsers();
+} 
 
 export async function deleteUser(userId: string) {
   const sheet = await getUsersSheet();
@@ -187,6 +202,9 @@ export async function deleteUser(userId: string) {
   if (!row) throw new Error('User not found');
   
   await row.delete();
+
+  // Invalidate user cache
+  cacheHelpers.invalidateUsers();
 }
 
 export async function updateUser(username: string, updates: Partial<NewUser>) {
@@ -210,4 +228,7 @@ export async function updateUser(username: string, updates: Partial<NewUser>) {
   });
 
   await row.save();
+
+  // Invalidate user cache
+  cacheHelpers.invalidateUsers();
 }
