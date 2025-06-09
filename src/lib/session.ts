@@ -9,6 +9,8 @@ export type SessionUser = {
   email: string;
   status: UserStatus;
   id: string;
+  lastActivity: number; // timestamp
+  sessionTimeout: number; // hours
 };
 
 declare module 'iron-session' {
@@ -22,6 +24,7 @@ export const sessionOptions: SessionOptions = {
   cookieName: 'helper-tracker-session',
   cookieOptions: {
     secure: process.env.NODE_ENV === 'production',
+    maxAge: 7 * 24 * 60 * 60 * 1000,
   },
 };
 
@@ -53,3 +56,26 @@ export const canManageUsers = (role: UserRole): boolean => {
 export const canAccessSettings = (role: UserRole): boolean => {
   return role === 'admin';
 };
+
+// Helper function to check if session is expired
+export function isSessionExpired(user: SessionUser): boolean {
+  if (!user.lastActivity || !user.sessionTimeout) return false;
+  
+  const timeoutMs = user.sessionTimeout * 60 * 60 * 1000; // Convert hours to milliseconds
+  const timeSinceLastActivity = Date.now() - user.lastActivity;
+  
+  return timeSinceLastActivity > timeoutMs;
+}
+
+// Helper function to update last activity
+export function updateLastActivity(user: SessionUser): SessionUser {
+  return {
+    ...user,
+    lastActivity: Date.now(),
+  };
+}
+
+// Helper function to get default session timeout (24 hours)
+export function getDefaultSessionTimeout(): number {
+  return 24; // hours
+}

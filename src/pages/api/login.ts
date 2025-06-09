@@ -2,7 +2,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { getIronSession } from 'iron-session';
 import bcrypt from 'bcrypt';
-import { sessionOptions, SessionUser } from '@/lib/session';
+import { getDefaultSessionTimeout, sessionOptions, SessionUser } from '@/lib/session';
 import { getUserByUsername } from '@/lib/users';
 
 export default async function loginRoute(req: NextApiRequest, res: NextApiResponse) {
@@ -42,7 +42,9 @@ export default async function loginRoute(req: NextApiRequest, res: NextApiRespon
       username: user.username,
       role: user.role,
       email: user.email,
-      status: user.status
+      status: user.status,
+      lastActivity: Date.now(),
+      sessionTimeout: getDefaultSessionTimeout(),
     };
     
     await session.save();
@@ -50,7 +52,8 @@ export default async function loginRoute(req: NextApiRequest, res: NextApiRespon
     return res.status(200).json({ 
       message: 'Logged in successfully', 
       role: user.role,
-      username: user.username 
+      username: user.username,
+      sessiomTimeout: session.user.sessionTimeout
     });
 
   } catch (error) {
