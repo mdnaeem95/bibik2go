@@ -1,4 +1,4 @@
-// src/components/helpers/steps/ReviewStep.tsx
+// src/components/helpers/steps/ReviewStep.tsx - Updated with new fields
 import React from 'react';
 import {
   Box,
@@ -54,6 +54,16 @@ export const ReviewStep: React.FC<ReviewStepProps> = ({ formData }) => {
           <Grid size={{ xs: 12, sm: 6 }}>
             <Typography variant="body2">
               <strong>EA Officer:</strong> {formData.eaOfficer}
+            </Typography>
+          </Grid>
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <Typography variant="body2">
+              <strong>PT / Agency:</strong> {formData.pt}
+            </Typography>
+          </Grid>
+          <Grid size={{ xs: 12, sm: 6 }}>
+            <Typography variant="body2">
+              <strong>Transfer Status:</strong> {formData.transferStatus}
             </Typography>
           </Grid>
           <Grid size={{ xs: 12, sm: 6 }}>

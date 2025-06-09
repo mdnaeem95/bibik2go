@@ -2,6 +2,7 @@
 import { JWT } from 'google-auth-library';
 import { GoogleSpreadsheet, GoogleSpreadsheetRow } from 'google-spreadsheet';
 import { cache, CacheKeys, cacheHelpers } from './cache';
+import { TransferStatus } from '@/types';
 
 // 1) JWT auth client
 const jwtClient = new JWT({
@@ -33,6 +34,8 @@ export type RawHelperRow = {
   eaOfficer: string;
   outstandingLoan: string;
   employmentStartDate: string;
+  pt: string;
+  transferStatus: string;
 };
 
 export type HelperRow =
@@ -47,6 +50,8 @@ export interface NewHelper {
   eaOfficer: string;
   outstandingLoan: number;
   employmentStartDate: string;
+  pt: string;
+  transferStatus: TransferStatus;
 }
 
 // 4) Fetch & type rows as intersection so TS knows about column props
@@ -78,6 +83,8 @@ export async function addHelper(helper: NewHelper): Promise<GoogleSpreadsheetRow
     eaOfficer: helper.eaOfficer,
     outstandingLoan: helper.outstandingLoan.toString(),
     employmentStartDate: helper.employmentStartDate,
+    pt: helper.pt,
+    transferStatus: helper.transferStatus,
   });
 
   // Invalidate related caches
@@ -109,6 +116,8 @@ export async function updateHelper(id: string, helper: Partial<NewHelper>) {
   if (helper.eaOfficer !== undefined) row.set('eaOfficer', helper.eaOfficer);
   if (helper.outstandingLoan !== undefined) row.set('outstandingLoan', String(helper.outstandingLoan));
   if (helper.employmentStartDate !== undefined) row.set('employmentStartDate', helper.employmentStartDate);
+  if (helper.pt !== undefined) row.set('pt', helper.pt);
+  if (helper.transferStatus !== undefined) row.set('transferStatus', helper.transferStatus);
 
   await row.save();
 

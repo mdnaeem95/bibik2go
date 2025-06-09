@@ -27,6 +27,8 @@ export interface NewUser {
 }
 
 // Helper Types
+export type TransferStatus = 'New' | 'Transfer';
+
 export interface Helper {
   id: string;
   name: string;
@@ -36,6 +38,8 @@ export interface Helper {
   eaOfficer: string;
   outstandingLoan: number;
   employmentStartDate: string;
+  pt: string;
+  transferStatus: TransferStatus
 }
 
 export interface NewHelper {
@@ -46,6 +50,8 @@ export interface NewHelper {
   eaOfficer: string;
   outstandingLoan: number;
   employmentStartDate: string;
+  pt: string;
+  transferStatus: TransferStatus
 }
 
 // Incident Types
@@ -144,3 +150,31 @@ export const SESSION_TIMEOUT = {
   MAX_HOURS: 168,
   DEFAULT_HOURS: 24,
 } as const;
+
+// Transfer Status Options - NEW
+export const TRANSFER_STATUS_OPTIONS: { value: TransferStatus; label: string; description: string }[] = [
+  { 
+    value: 'New', 
+    label: 'New Helper', 
+    description: 'First-time helper starting fresh employment' 
+  },
+  { 
+    value: 'Transfer', 
+    label: 'Transfer', 
+    description: 'Helper transferring from another employer' 
+  },
+];
+
+// Common PT/Agency Options - NEW (you can customize these based on actual agencies)
+export const COMMON_PT_AGENCIES = [
+  'Hoki',
+  'Qurrny',
+  'JWS',
+  'DMSI',
+  'Crystal',
+  'Enda',
+  'Alfira',
+  'Prigel',
+  'Jatim',
+  'IBU FAE',
+] as const;

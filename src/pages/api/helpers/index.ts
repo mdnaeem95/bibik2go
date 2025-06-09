@@ -7,6 +7,7 @@ import {
   NewHelper,
 } from '@/lib/sheets';
 import { sessionOptions, SessionUser, canCreate } from '@/lib/session';
+import { TransferStatus } from '@/types';
 
 
 export interface Helper {
@@ -18,6 +19,8 @@ export interface Helper {
   eaOfficer: string;
   outstandingLoan: number;
   employmentStartDate: string;
+  pt: string;
+  transferStatus: TransferStatus;
 }
 
 export default async function handler(
@@ -48,7 +51,9 @@ export default async function handler(
         totalEmployers: Number(r.totalEmployers),
         eaOfficer: r.eaOfficer,
         outstandingLoan: Number(r.outstandingLoan),
-        employmentStartDate: r.employmentStartDate
+        employmentStartDate: r.employmentStartDate,
+        pt: r.pt || '',
+        transferStatus: (r.transferStatus as TransferStatus) || 'New',
       }));
       return res.status(200).json(helpers);
     }

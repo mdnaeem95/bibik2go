@@ -26,6 +26,8 @@ import NewReleasesIcon from '@mui/icons-material/NewReleases';
 import { Helper, LOAN_THRESHOLDS } from '@/types';
 import { calculateEmploymentDuration, isNewEmployee } from '@/utils/helpers';
 import { LoanStatusChip } from './LoanStatusChip';
+import { Business, SwapHoriz } from '@mui/icons-material';
+import { TransferStatusChip } from './TransferStatusChip';
 
 interface HelpersTableProps {
   helpers: Helper[];
@@ -100,6 +102,30 @@ export const HelpersTable: React.FC<HelpersTableProps> = ({
             <TableCell>Current Employer</TableCell>
             <TableCell>
               <TableSortLabel
+                active={sortBy === 'pt'}
+                direction={sortBy === 'pt' ? sortOrder: 'asc'}
+                onClick={() => onSort('pt')}
+              >
+                <Box display="flex" alignItems="center" gap={1}>
+                  <Business fontSize='small' />
+                  PT / Agency
+                </Box>
+              </TableSortLabel>
+            </TableCell>
+            <TableCell>
+              <TableSortLabel
+                active={sortBy === 'transferStatus'}
+                direction={sortBy === 'transferStatus' ? sortOrder: 'asc'}
+                onClick={() => onSort('transferStatus')}
+              >
+                <Box display="flex" alignItems="center" gap={1}>
+                  <SwapHoriz fontSize='small' />
+                  Status
+                </Box>
+              </TableSortLabel>
+            </TableCell>
+            <TableCell>
+              <TableSortLabel
                 active={sortBy === 'employmentStartDate'}
                 direction={sortBy === 'employmentStartDate' ? sortOrder : 'asc'}
                 onClick={() => onSort('employmentStartDate')}
@@ -145,6 +171,14 @@ export const HelpersTable: React.FC<HelpersTableProps> = ({
               <TableRow key={helper.id} hover sx={getRowSx(helper)}>
                 <TableCell>{helper.name}</TableCell>
                 <TableCell>{helper.currentEmployer}</TableCell>
+                <TableCell>
+                  <Typography variant='body2' noWrap>
+                    {helper.pt || 'Not specified'}
+                  </Typography>
+                </TableCell>
+                <TableCell>
+                  <TransferStatusChip status={helper.transferStatus} />
+                </TableCell>
                 <TableCell>
                   <Box display="flex" alignItems="center" gap={1}>
                     <Typography variant="body2">{duration.displayText}</Typography>

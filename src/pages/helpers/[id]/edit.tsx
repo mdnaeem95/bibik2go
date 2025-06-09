@@ -11,12 +11,19 @@ import {
   Button,
   Alert,
   CircularProgress,
+  Grid,
+  Autocomplete,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
 } from '@mui/material';
 import toast from 'react-hot-toast';
 
 import DashboardLayout from '@/components/DashboardLayout';
 import { sessionOptions, SessionUser } from '@/lib/session';
 import { getAllHelpers } from '@/lib/sheets';
+import { COMMON_PT_AGENCIES, TRANSFER_STATUS_OPTIONS, TransferStatus } from '@/types';
 
 // Type for the helper prop we’ll pass in
 interface HelperProp {
@@ -28,6 +35,8 @@ interface HelperProp {
   eaOfficer: string;
   outstandingLoan: number;
   employmentStartDate: string;
+  pt: string;
+  transferStatus: TransferStatus
 }
 
 interface FormData {
@@ -38,6 +47,8 @@ interface FormData {
   eaOfficer: string;
   outstandingLoan: string;
   employmentStartDate: string;
+  pt: string;
+  transferStatus: TransferStatus
 }
 
 interface Props {
@@ -56,6 +67,8 @@ const EditHelperPage: NextPage<Props> = ({ helper }) => {
     eaOfficer: helper.eaOfficer,
     outstandingLoan: String(helper.outstandingLoan),
     employmentStartDate: helper.employmentStartDate,
+    pt: helper.pt,
+    transferStatus: helper.transferStatus
   });
   const [errors, setErrors] = useState<Partial<FormData>>({});
   const [submitError, setSubmitError] = useState('');
@@ -70,6 +83,8 @@ const EditHelperPage: NextPage<Props> = ({ helper }) => {
     if (!form.eaOfficer.trim()) errs.eaOfficer = 'EA Officer is required';
     if (!/^\d+$/.test(form.outstandingLoan)) errs.outstandingLoan = 'Must be a number';
     if (!form.employmentStartDate) errs.employmentStartDate = 'Employment start date is required';
+    if (!form.pt.trim()) errs.pt = 'PT/Agency is required';
+    if (!form.transferStatus) errs.transferStatus = 'New';
 
     // Validate employment start date is not in the future
     if (form.employmentStartDate) {
@@ -107,6 +122,8 @@ const EditHelperPage: NextPage<Props> = ({ helper }) => {
           eaOfficer: form.eaOfficer,
           outstandingLoan: Number(form.outstandingLoan),
           employmentStartDate: form.employmentStartDate,
+          pt: form.pt,
+          transferStatus: form.transferStatus
         }),
       });
       if (!res.ok) {
@@ -128,91 +145,192 @@ const EditHelperPage: NextPage<Props> = ({ helper }) => {
     router.push(returnTo);
   };
 
-  return (
+ return (
     <DashboardLayout>
-      <Paper sx={{ p: 4, maxWidth: 600, mx: 'auto' }} elevation={1}>
+      <Paper sx={{ p: 4, maxWidth: 800, mx: 'auto' }} elevation={1}>
         <Typography variant="h5" gutterBottom>
-          Edit Helper
+          Edit Helper: {helper.name}
         </Typography>
 
         {submitError && <Alert severity="error" sx={{ mb: 2 }}>{submitError}</Alert>}
 
-        <Box component="form" onSubmit={onSubmit} sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <TextField
-            label="Name"
-            value={form.name}
-            onChange={onChange('name')}
-            error={!!errors.name}
-            helperText={errors.name}
-            fullWidth
-          />
+        <Box component="form" onSubmit={onSubmit}>
+          <Grid container spacing={3}>
+            {/* Personal Information */}
+            <Grid size={{ xs: 12 }}>
+              <Typography variant="subtitle1" gutterBottom sx={{ mt: 2, mb: 1, fontWeight: 600 }}>
+                Personal Information
+              </Typography>
+            </Grid>
 
-          <TextField
-            label="Current Employer"
-            value={form.currentEmployer}
-            onChange={onChange('currentEmployer')}
-            error={!!errors.currentEmployer}
-            helperText={errors.currentEmployer}
-            fullWidth
-          />
+            <Grid size={{ xs: 12, md: 6 }}>
+              <TextField
+                label="Name"
+                value={form.name}
+                onChange={onChange('name')}
+                error={!!errors.name}
+                helperText={errors.name}
+                fullWidth
+                required
+              />
+            </Grid>
 
-          <TextField
-            label="Employment Start Date"
-            type="date"
-            value={form.employmentStartDate}
-            onChange={onChange('employmentStartDate')}
-            error={!!errors.employmentStartDate}
-            helperText={errors.employmentStartDate}
-            fullWidth
-            required
-            InputLabelProps={{
-              shrink: true,
-            }}
-          />
+            <Grid size={{ xs: 12, md: 6 }}>
+              <TextField
+                label="EA Officer"
+                value={form.eaOfficer}
+                onChange={onChange('eaOfficer')}
+                error={!!errors.eaOfficer}
+                helperText={errors.eaOfficer}
+                fullWidth
+                required
+              />
+            </Grid>
 
-          <TextField
-            label="Problem"
-            value={form.problem}
-            onChange={onChange('problem')}
-            error={!!errors.problem}
-            helperText={errors.problem}
-            fullWidth
-          />
+            {/* NEW: PT and Transfer Status */}
+            <Grid size={{ xs: 12, md: 6 }}>
+              <Autocomplete
+                options={COMMON_PT_AGENCIES}
+                value={form.pt}
+                onChange={(_, newValue) => setForm(f => ({ ...f, pt: newValue || '' }))}
+                freeSolo
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="PT / Agency"
+                    value={form.pt}
+                    onChange={onChange('pt')}
+                    error={!!errors.pt}
+                    helperText={errors.pt || 'Agency or PT the helper came from'}
+                    fullWidth
+                    required
+                  />
+                )}
+              />
+            </Grid>
 
-          <TextField
-            label="Total Employers"
-            value={form.totalEmployers}
-            onChange={onChange('totalEmployers')}
-            error={!!errors.totalEmployers}
-            helperText={errors.totalEmployers}
-            fullWidth
-          />
+            <Grid size={{ xs: 12, md: 6 }}>
+              <FormControl required fullWidth>
+                <InputLabel>Transfer Status</InputLabel>
+                <Select
+                  value={form.transferStatus}
+                  label="Transfer Status"
+                  onChange={(e) => setForm(f => ({ ...f, transferStatus: e.target.value as TransferStatus }))}
+                >
+                  {TRANSFER_STATUS_OPTIONS.map((option) => (
+                    <MenuItem key={option.value} value={option.value}>
+                      <Box>
+                        <Typography variant="body2" fontWeight={500}>
+                          {option.label}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {option.description}
+                        </Typography>
+                      </Box>
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
 
-          <TextField
-            label="EA Officer"
-            value={form.eaOfficer}
-            onChange={onChange('eaOfficer')}
-            error={!!errors.eaOfficer}
-            helperText={errors.eaOfficer}
-            fullWidth
-          />
+            {/* Employment Information */}
+            <Grid size={{ xs: 12 }}>
+              <Typography variant="subtitle1" gutterBottom sx={{ mt: 3, mb: 1, fontWeight: 600 }}>
+                Employment Information
+              </Typography>
+            </Grid>
 
-          <TextField
-            label="Outstanding Loan"
-            value={form.outstandingLoan}
-            onChange={onChange('outstandingLoan')}
-            error={!!errors.outstandingLoan}
-            helperText={errors.outstandingLoan}
-            fullWidth
-          />
+            <Grid size={{ xs: 12, md: 6 }}>
+              <TextField
+                label="Current Employer"
+                value={form.currentEmployer}
+                onChange={onChange('currentEmployer')}
+                error={!!errors.currentEmployer}
+                helperText={errors.currentEmployer}
+                fullWidth
+                required
+              />
+            </Grid>
 
-          <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2, gap: 2 }}>
-            <Button onClick={onCancel} disabled={loading}>Cancel</Button>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <TextField
+                label="Employment Start Date"
+                type="date"
+                value={form.employmentStartDate}
+                onChange={onChange('employmentStartDate')}
+                error={!!errors.employmentStartDate}
+                helperText={errors.employmentStartDate}
+                fullWidth
+                required
+                InputLabelProps={{
+                  shrink: true,
+                }}
+              />
+            </Grid>
+
+            <Grid size={{ xs: 12, md: 6 }}>
+              <TextField
+                label="Total Employers"
+                value={form.totalEmployers}
+                onChange={onChange('totalEmployers')}
+                error={!!errors.totalEmployers}
+                helperText={errors.totalEmployers}
+                fullWidth
+                required
+                type="number"
+                inputProps={{ min: 1 }}
+              />
+            </Grid>
+
+            {/* Problem and Financial Information */}
+            <Grid size={{ xs: 12 }}>
+              <Typography variant="subtitle1" gutterBottom sx={{ mt: 3, mb: 1, fontWeight: 600 }}>
+                Current Status & Financial Information
+              </Typography>
+            </Grid>
+
+            <Grid size={{ xs: 12 }}>
+              <TextField
+                label="Problem/Latest Issue"
+                value={form.problem}
+                onChange={onChange('problem')}
+                error={!!errors.problem}
+                helperText={errors.problem}
+                fullWidth
+                required
+                multiline
+                rows={3}
+              />
+            </Grid>
+
+            <Grid size={{ xs: 12, md: 6 }}>
+              <TextField
+                label="Outstanding Loan"
+                value={form.outstandingLoan}
+                onChange={onChange('outstandingLoan')}
+                error={!!errors.outstandingLoan}
+                helperText={errors.outstandingLoan}
+                fullWidth
+                required
+                type="number"
+                inputProps={{ min: 0, step: 0.01 }}
+                InputProps={{
+                  startAdornment: <Typography sx={{ mr: 1 }}>$</Typography>,
+                }}
+              />
+            </Grid>
+          </Grid>
+
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 4, gap: 2 }}>
+            <Button onClick={onCancel} disabled={loading} size="large">
+              Cancel
+            </Button>
             <Button
               type="submit"
               variant="contained"
               disabled={loading}
               startIcon={loading ? <CircularProgress size={20} /> : null}
+              size="large"
             >
               {loading ? 'Saving...' : 'Save Changes'}
             </Button>
@@ -248,6 +366,8 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, res, 
         eaOfficer: row.eaOfficer,
         outstandingLoan: Number(row.outstandingLoan),
         employmentStartDate: row.employmentStartDate,
+        pt: row.pt || '',
+        transferStatus: (row.transferStatus as TransferStatus) || 'New',
       },
     },
   };

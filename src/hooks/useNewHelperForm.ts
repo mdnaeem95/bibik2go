@@ -11,6 +11,8 @@ export interface NewHelperFormData {
   eaOfficer: string;
   outstandingLoan: string;
   employmentStartDate: string;
+  pt: string;
+  transferStatus: string;
   
   // Incident fields
   incidentDate: string;
@@ -37,6 +39,8 @@ export function useNewHelperForm(initialReportedBy: string) {
     eaOfficer: '',
     outstandingLoan: '',
     employmentStartDate: '',
+    pt: '',
+    transferStatus: '',
     
     // Incident fields
     incidentDate: new Date().toISOString().split('T')[0],
@@ -93,6 +97,14 @@ export function useNewHelperForm(initialReportedBy: string) {
             errs.employmentStartDate = futureDateError;
           }
         }
+
+        if (!formData.pt.trim()) {
+          errs.pt = 'PT/Agency is required';
+        }
+
+        if (!formData.transferStatus) {
+          errs.transferStatus = 'Transfer status is required';
+        }
         break;
 
       case 1: // Incident Details
@@ -140,6 +152,8 @@ export function useNewHelperForm(initialReportedBy: string) {
       eaOfficer: '',
       outstandingLoan: '',
       employmentStartDate: '',
+      pt: '',
+      transferStatus: 'New',
       incidentDate: new Date().toISOString().split('T')[0],
       incidentDescription: '',
       severity: 'Medium',

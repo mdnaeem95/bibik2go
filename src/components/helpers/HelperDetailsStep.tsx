@@ -1,8 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React from 'react';
-import { Grid, TextField, Typography, Box } from '@mui/material';
+import { Grid, TextField, Typography, Box, Autocomplete, FormControl, InputLabel, Select, MenuItem } from '@mui/material';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import { NewHelperFormData } from '@/hooks/useNewHelperForm';
+import { COMMON_PT_AGENCIES, TRANSFER_STATUS_OPTIONS } from '@/types';
 
 interface HelperDetailsStepProps {
   formData: NewHelperFormData;
@@ -57,6 +58,52 @@ export const HelperDetailsStep: React.FC<HelperDetailsStepProps> = ({
             fullWidth
             required
           />
+        </Grid>
+
+        {/* PT Agency and Transfer Status */}
+        <Grid size={{ xs: 12, md: 6 }}>
+          <Autocomplete
+            options={COMMON_PT_AGENCIES}
+            value={formData.pt}
+            onChange={(_, newValue) => onChange('pt', newValue || '')}
+            freeSolo
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label="PT / Agency"
+                value={formData.pt}
+                onChange={handleChange('pt')}
+                error={!!errors.pt}
+                helperText={errors.pt || 'Agency or PT the helper came from'}
+                fullWidth
+                required
+              />
+            )}
+          />
+        </Grid>
+
+        <Grid size={{ xs: 12, md: 6 }}>
+          <FormControl required fullWidth>
+            <InputLabel>Transfer Status</InputLabel>
+            <Select
+              value={formData.transferStatus}
+              label="Transfer Status"
+              onChange={(e) => onChange('transferStatus', e.target.value)}
+            >
+              {TRANSFER_STATUS_OPTIONS.map((option) => (
+                <MenuItem key={option.value} value={option.value}>
+                  <Box>
+                    <Typography variant="body2" fontWeight={500}>
+                      {option.label}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {option.description}
+                    </Typography>
+                  </Box>
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
         </Grid>
 
         {/* Employment Information Section */}
