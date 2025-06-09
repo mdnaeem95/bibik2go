@@ -60,3 +60,10 @@ export const FORM_STEPS = [
   'Add Media', 
   'Review & Submit'
 ];
+
+export const INCIDENT_FORM_STEPS = [
+  'Select Helper', 
+  'Incident Details', 
+  'Add Media', 
+  'Review & Submit'
+];
