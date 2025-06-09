@@ -69,15 +69,22 @@ export function useNewHelperForm(initialReportedBy: string) {
         if (!formData.currentEmployer.trim()) {
           errs.currentEmployer = 'Employer is required';
         }
-        if (!validators.number(formData.totalEmployers, 'Total employers')) {
-          errs.totalEmployers = validators.number(formData.totalEmployers, 'Total employers');
+        
+        // Fix: Correct validation for number fields
+        const totalEmployersError = validators.number(formData.totalEmployers, 'Total employers');
+        if (totalEmployersError) {
+          errs.totalEmployers = totalEmployersError;
         }
+        
         if (!formData.eaOfficer.trim()) {
           errs.eaOfficer = 'EA Officer is required';
         }
-        if (!validators.number(formData.outstandingLoan, 'Outstanding loan')) {
-          errs.outstandingLoan = validators.number(formData.outstandingLoan, 'Outstanding loan');
+        
+        const outstandingLoanError = validators.number(formData.outstandingLoan, 'Outstanding loan');
+        if (outstandingLoanError) {
+          errs.outstandingLoan = outstandingLoanError;
         }
+        
         if (!formData.employmentStartDate) {
           errs.employmentStartDate = 'Employment start date is required';
         } else {
@@ -110,6 +117,7 @@ export function useNewHelperForm(initialReportedBy: string) {
     }
 
     setErrors(errs);
+    console.log('Validation errors for step', step, ':', errs); // Debug log
     return Object.keys(errs).length === 0;
   }, [formData]);
 

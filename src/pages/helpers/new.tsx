@@ -181,64 +181,72 @@ const NewHelperPage: NextPage<Props> = ({ user }) => {
     }
   };
 
-  const getStepActionButtons = () => {
-    if (isLastStep) {
-      return (
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 4 }}>
-          <Button onClick={handleBack} size="large">
-            Back
-          </Button>
-          <Box sx={{ display: 'flex', gap: 2 }}>
-            <Button onClick={handleCancel} disabled={loading} size="large">
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              variant="contained"
-              disabled={loading}
-              startIcon={loading ? <CircularProgress size={20} /> : null}
-              size="large"
-            >
-              {loading ? 'Creating...' : 'Create Helper & Incident'}
-            </Button>
-          </Box>
-        </Box>
-      );
-    }
-
-    if (isFirstStep) {
-      return (
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 4 }}>
-          <Button
-            onClick={handleNext}
-            variant="contained"
-            disabled={!formData.name || !formData.currentEmployer || !formData.eaOfficer}
-            size="large"
-          >
-            Continue to Incident Details
-          </Button>
-        </Box>
-      );
-    }
-
+const getStepActionButtons = () => {
+  if (isLastStep) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 4 }}>
         <Button onClick={handleBack} size="large">
           Back
         </Button>
+        <Box sx={{ display: 'flex', gap: 2 }}>
+          <Button onClick={handleCancel} disabled={loading} size="large">
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            variant="contained"
+            disabled={loading}
+            startIcon={loading ? <CircularProgress size={20} /> : null}
+            size="large"
+          >
+            {loading ? 'Creating...' : 'Create Helper & Incident'}
+          </Button>
+        </Box>
+      </Box>
+    );
+  }
+
+  if (isFirstStep) {
+    // Check if basic required fields are filled for step 0
+    const hasRequiredFields = formData.name.trim() && 
+                             formData.currentEmployer.trim() && 
+                             formData.eaOfficer.trim() &&
+                             formData.totalEmployers.trim() &&
+                             formData.outstandingLoan.trim() &&
+                             formData.employmentStartDate;
+
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 4 }}>
         <Button
           onClick={handleNext}
           variant="contained"
+          disabled={!hasRequiredFields}
           size="large"
-          disabled={
-            activeStep === 1 && (!formData.incidentDescription || !formData.incidentDate)
-          }
         >
-          {activeStep === 2 ? 'Continue to Review' : 'Continue'}
+          Continue to Incident Details
         </Button>
       </Box>
     );
-  };
+  }
+
+  return (
+    <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 4 }}>
+      <Button onClick={handleBack} size="large">
+        Back
+      </Button>
+      <Button
+        onClick={handleNext}
+        variant="contained"
+        size="large"
+        disabled={
+          activeStep === 1 && (!formData.incidentDescription || !formData.incidentDate)
+        }
+      >
+        {activeStep === 2 ? 'Continue to Review' : 'Continue'}
+      </Button>
+    </Box>
+  );
+};
 
   return (
     <DashboardLayout>
