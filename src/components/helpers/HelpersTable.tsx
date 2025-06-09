@@ -16,6 +16,7 @@ import {
   Tooltip,
   CircularProgress,
   Chip,
+  Link,
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -67,6 +68,11 @@ export const HelpersTable: React.FC<HelpersTableProps> = ({
     } finally {
       setDeletingId(null);
     }
+  };
+
+  const handleNameClick = (id: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    router.push(`/helpers/${id}`);
   };
 
   const getRowSx = (helper: Helper) => {
@@ -169,8 +175,45 @@ export const HelpersTable: React.FC<HelpersTableProps> = ({
 
             return (
               <TableRow key={helper.id} hover sx={getRowSx(helper)}>
-                <TableCell>{helper.name}</TableCell>
-                <TableCell>{helper.currentEmployer}</TableCell>
+                <TableCell>
+                  {/* UPDATED: Make name clickable */}
+                  <Link
+                    component="button"
+                    variant="body1"
+                    onClick={(e) => handleNameClick(helper.id, e)}
+                    sx={{
+                      textAlign: 'left',
+                      fontWeight: 500,
+                      color: 'primary.main',
+                      textDecoration: 'none',
+                      '&:hover': {
+                        textDecoration: 'underline',
+                        color: 'primary.dark',
+                      },
+                    }}
+                  >
+                    {helper.name}
+                  </Link>
+                </TableCell>
+                <TableCell>
+                  {/* UPDATED: Make employer clickable */}
+                  <Link
+                    component="button"
+                    variant="body2"
+                    onClick={(e) => handleNameClick(helper.id, e)}
+                    sx={{
+                      textAlign: 'left',
+                      color: 'text.primary',
+                      textDecoration: 'none',
+                      '&:hover': {
+                        textDecoration: 'underline',
+                        color: 'primary.main',
+                      },
+                    }}
+                  >
+                    {helper.currentEmployer}
+                  </Link>
+                </TableCell>
                 <TableCell>
                   <Typography variant='body2' noWrap>
                     {helper.pt || 'Not specified'}
