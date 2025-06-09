@@ -1,5 +1,5 @@
-// src/components/DashboardLayout.tsx (UPDATED)
-import React, { ReactNode } from 'react';
+// src/components/DashboardLayout.tsx (UPDATED WITH FUNCTIONAL SEARCH)
+import React, { ReactNode, useRef, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useState } from 'react';
 import {
@@ -23,6 +23,7 @@ import {
   useTheme,
   useMediaQuery,
   IconButton,
+  ClickAwayListener,
 } from '@mui/material';
 
 import DashboardIcon from '@mui/icons-material/Dashboard';
@@ -33,7 +34,11 @@ import SettingsIcon from '@mui/icons-material/Settings';
 import LogoutIcon from '@mui/icons-material/Logout';
 import SearchIcon from '@mui/icons-material/Search';
 import MenuIcon from '@mui/icons-material/Menu';
+import ClearIcon from '@mui/icons-material/Clear';
 import CircularProgress from '@mui/material/CircularProgress';
+
+import { useGlobalSearch } from '@/hooks/useGlobalSearch';
+import { SearchResults } from '@/components/common/SearchResults';
 
 const drawerWidth = 260;
 
@@ -81,6 +86,20 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [mobileOpen, setMobileOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+  
+  // Search functionality
+  const {
+    searchQuery,
+    setSearchQuery,
+    results,
+    loading: searchLoading,
+    isOpen: searchOpen,
+    setIsOpen: setSearchOpen,
+    clearSearch,
+  } = useGlobalSearch();
+
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
 
   const handleLogout = async () => {
     setLoggingOut(true);
@@ -100,6 +119,63 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
     }
     return router.pathname.startsWith(href);
   };
+
+  // Handle search input focus
+  const handleSearchFocus = () => {
+    if (searchQuery.length > 0) {
+      setSearchOpen(true);
+    }
+  };
+
+  // Handle search input change
+  const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const value = event.target.value;
+    setSearchQuery(value);
+    
+    if (value.length === 0) {
+      setSearchOpen(false);
+    }
+  };
+
+  // Handle clear search
+  const handleClearSearch = () => {
+    clearSearch();
+    searchInputRef.current?.focus();
+  };
+
+  // Handle click away from search
+  const handleSearchClickAway = () => {
+    if (!searchQuery.trim()) {
+      setSearchOpen(false);
+    }
+  };
+
+  // Handle escape key
+  useEffect(() => {
+    const handleEscapeKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && searchOpen) {
+        setSearchOpen(false);
+        searchInputRef.current?.blur();
+      }
+    };
+
+    document.addEventListener('keydown', handleEscapeKey);
+    return () => document.removeEventListener('keydown', handleEscapeKey);
+  }, [searchOpen, setSearchOpen]);
+
+  // Handle keyboard navigation (Ctrl/Cmd + K to focus search)
+  useEffect(() => {
+    const handleKeyboardShortcut = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key === 'k') {
+        event.preventDefault();
+        searchInputRef.current?.focus();
+        setSearchOpen(true);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyboardShortcut);
+    return () => document.removeEventListener('keydown', handleKeyboardShortcut);
+  }, [setSearchOpen]);
 
   const drawer = (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
@@ -245,34 +321,78 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
           </Box>
 
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Paper
-              sx={{
-                px: 2,
-                py: 0.5,
-                display: 'flex',
-                alignItems: 'center',
-                backgroundColor: '#f1f5f9',
-                borderRadius: '12px',
-                minWidth: 200,
-                '&:hover': {
-                  backgroundColor: '#e2e8f0',
-                },
-                transition: 'background-color 0.2s',
-              }}
-              elevation={0}
-            >
-              <SearchIcon sx={{ mr: 1, fontSize: 20, color: '#6b7280' }} />
-              <InputBase 
-                placeholder="Search..." 
-                sx={{ 
-                  fontSize: 14,
-                  flex: 1,
-                  '& input::placeholder': {
-                    opacity: 0.7,
-                  },
-                }} 
-              />
-            </Paper>
+            {/* Enhanced Search Bar */}
+            <ClickAwayListener onClickAway={handleSearchClickAway}>
+              <Box sx={{ position: 'relative' }} ref={searchContainerRef}>
+                <Paper
+                  sx={{
+                    px: 2,
+                    py: 0.5,
+                    display: 'flex',
+                    alignItems: 'center',
+                    backgroundColor: searchOpen ? '#ffffff' : '#f1f5f9',
+                    borderRadius: '12px',
+                    minWidth: 250,
+                    maxWidth: isMobile ? 200 : 350,
+                    border: searchOpen ? '2px solid #0284c7' : '1px solid transparent',
+                    '&:hover': {
+                      backgroundColor: searchOpen ? '#ffffff' : '#e2e8f0',
+                    },
+                    transition: 'all 0.2s',
+                    boxShadow: searchOpen ? '0 4px 12px rgba(0,0,0,0.1)' : 'none',
+                  }}
+                  elevation={searchOpen ? 4 : 0}
+                >
+                  <SearchIcon sx={{ mr: 1, fontSize: 20, color: '#6b7280' }} />
+                  <InputBase 
+                    ref={searchInputRef}
+                    placeholder="Search helpers & incidents... (⌘K)" 
+                    value={searchQuery}
+                    onChange={handleSearchChange}
+                    onFocus={handleSearchFocus}
+                    sx={{ 
+                      fontSize: 14,
+                      flex: 1,
+                      '& input::placeholder': {
+                        opacity: 0.7,
+                      },
+                    }} 
+                  />
+                  {searchQuery && (
+                    <IconButton
+                      size="small"
+                      onClick={handleClearSearch}
+                      sx={{ 
+                        ml: 1, 
+                        p: 0.5,
+                        color: '#6b7280',
+                        '&:hover': {
+                          color: '#374151',
+                          bgcolor: '#f3f4f6',
+                        },
+                      }}
+                    >
+                      <ClearIcon fontSize="small" />
+                    </IconButton>
+                  )}
+                </Paper>
+
+                {/* Search Results */}
+                {searchOpen && (
+                  <SearchResults
+                    results={results}
+                    loading={searchLoading}
+                    query={searchQuery}
+                    onClose={() => setSearchOpen(false)}
+                    onResultClick={() => {
+                      clearSearch();
+                      searchInputRef.current?.blur();
+                    }}
+                  />
+                )}
+              </Box>
+            </ClickAwayListener>
+
             <Avatar 
               sx={{ 
                 width: 36, 
@@ -355,3 +475,21 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
 };
 
 export default DashboardLayout;
+
+/*
+Key Features Added:
+1. **Global Search**: Search across helpers and incidents by name, employer, problem, description, etc.
+2. **Smart Results**: Results are grouped by type (helpers/incidents) with context
+3. **Keyboard Navigation**: Ctrl/Cmd + K to focus search, Escape to close
+4. **Responsive Design**: Works on both desktop and mobile
+5. **Real-time Search**: Debounced search with loading states
+6. **Click Away**: Close results when clicking outside
+7. **Clear Button**: Easy way to clear search query
+8. **Visual Feedback**: Enhanced styling when search is active
+
+Usage:
+- Type at least 2 characters to start searching
+- Results show helpers and incidents with matched fields highlighted
+- Click any result to navigate to that page
+- Use keyboard shortcuts for better UX
+*/
