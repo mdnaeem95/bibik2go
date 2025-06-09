@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Paper, Typography, Button } from '@mui/material';
+import { Box, Paper, Typography, Button, CircularProgress } from '@mui/material';
 
 interface EmptyStateProps {
   icon?: React.ReactElement;
@@ -8,6 +8,8 @@ interface EmptyStateProps {
   action?: {
     label: string;
     onClick: () => void;
+    disabled?: boolean;
+    loading?: boolean;
   };
 }
 
@@ -38,8 +40,13 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
       </Typography>
     )}
     {action && (
-      <Button variant="contained" onClick={action.onClick}>
-        {action.label}
+      <Button 
+        variant="contained" 
+        onClick={action.onClick}
+        disabled={action.disabled || action.loading}
+        startIcon={action.loading ? <CircularProgress size={20} color="inherit" /> : undefined}
+      >
+        {action.loading ? 'Loading...' : action.label}
       </Button>
     )}
   </Paper>
