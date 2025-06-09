@@ -28,6 +28,7 @@ import { HelperDetailsStep } from '@/components/helpers/HelperDetailsStep';
 import { IncidentDetailsStep } from '@/components/helpers/IncidentDetailsStep';
 import { MediaUploadStep } from '@/components/helpers/MediaUploadStep';
 import { ReviewStep } from '@/components/helpers/ReviewStep';
+import { TransferStatus } from '@/types';
 
 interface Props {
   user: SessionUser;
@@ -93,6 +94,8 @@ const NewHelperPage: NextPage<Props> = ({ user }) => {
         eaOfficer: formData.eaOfficer,
         outstandingLoan: Number(formData.outstandingLoan),
         employmentStartDate: formData.employmentStartDate,
+        pt: formData.pt,
+        transferStatus: formData.transferStatus as TransferStatus
       };
 
       await helpersApi.create(helperData);
