@@ -1,4 +1,4 @@
-// src/components/helpers/HelpersTable.tsx
+// src/components/helpers/HelpersTable.tsx - Updated with CollapsibleText for problem column
 import React, { useState } from 'react';
 import { useRouter } from 'next/router';
 import {
@@ -24,11 +24,13 @@ import VisibilityIcon from '@mui/icons-material/Visibility';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import NewReleasesIcon from '@mui/icons-material/NewReleases';
+import { Business, SwapHoriz } from '@mui/icons-material';
+
 import { Helper, LOAN_THRESHOLDS } from '@/types';
 import { calculateEmploymentDuration, isNewEmployee } from '@/utils/helpers';
 import { LoanStatusChip } from './LoanStatusChip';
-import { Business, SwapHoriz } from '@mui/icons-material';
 import { TransferStatusChip } from './TransferStatusChip';
+import { CollapsibleText } from '../common/CollapsibleText'; // NEW IMPORT
 
 interface HelpersTableProps {
   helpers: Helper[];
@@ -142,7 +144,12 @@ export const HelpersTable: React.FC<HelpersTableProps> = ({
                 </Box>
               </TableSortLabel>
             </TableCell>
-            <TableCell>Problem</TableCell>
+            <TableCell>
+              {/* UPDATED: Added fixed width for problem column */}
+              <Box sx={{ minWidth: '200px', maxWidth: '300px' }}>
+                Problem
+              </Box>
+            </TableCell>
             <TableCell>
               <TableSortLabel
                 active={sortBy === 'totalEmployers'}
@@ -176,7 +183,6 @@ export const HelpersTable: React.FC<HelpersTableProps> = ({
             return (
               <TableRow key={helper.id} hover sx={getRowSx(helper)}>
                 <TableCell>
-                  {/* UPDATED: Make name clickable */}
                   <Link
                     component="button"
                     variant="body1"
@@ -196,7 +202,6 @@ export const HelpersTable: React.FC<HelpersTableProps> = ({
                   </Link>
                 </TableCell>
                 <TableCell>
-                  {/* UPDATED: Make employer clickable */}
                   <Link
                     component="button"
                     variant="body2"
@@ -242,7 +247,14 @@ export const HelpersTable: React.FC<HelpersTableProps> = ({
                     )}
                   </Box>
                 </TableCell>
-                <TableCell>{helper.problem}</TableCell>
+                {/* UPDATED: Replace direct text with CollapsibleText component */}
+                <TableCell sx={{ minWidth: '200px', maxWidth: '300px' }}>
+                  <CollapsibleText 
+                    text={helper.problem} 
+                    maxLength={80}
+                    variant="body2"
+                  />
+                </TableCell>
                 <TableCell>{helper.totalEmployers}</TableCell>
                 <TableCell>{helper.eaOfficer}</TableCell>
                 <TableCell align="right">
