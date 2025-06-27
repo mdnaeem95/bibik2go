@@ -1,6 +1,6 @@
 // src/components/common/CollapsibleText.tsx
 import React, { useState } from 'react';
-import { Box, Typography, Link, Collapse } from '@mui/material';
+import { Box, Typography, Link } from '@mui/material';
 import { ExpandMore, ExpandLess } from '@mui/icons-material';
 
 interface CollapsibleTextProps {
