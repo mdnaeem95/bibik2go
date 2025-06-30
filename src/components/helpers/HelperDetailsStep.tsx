@@ -106,6 +106,50 @@ export const HelperDetailsStep: React.FC<HelperDetailsStepProps> = ({
           </FormControl>
         </Grid>
 
+        {/* Lodging Information Section - Only show for Transfer helpers */}
+        {formData.transferStatus === 'Transfer' && (
+          <>
+            <Grid size={{ xs: 12 }}>
+              <Typography variant="subtitle1" gutterBottom sx={{ mt: 3, mb: 1, fontWeight: 600 }}>
+                Lodging Information (Optional)
+              </Typography>
+            </Grid>
+
+            <Grid size={{ xs: 12, md: 6 }}>
+              <TextField
+                label="Lodging Start Date"
+                type="date"
+                value={formData.lodgingStartDate}
+                onChange={handleChange('lodgingStartDate')}
+                error={!!errors.lodgingStartDate}
+                helperText={errors.lodgingStartDate || 'Start date of temporary lodging'}
+                fullWidth
+                InputLabelProps={{
+                  shrink: true,
+                }}
+              />
+            </Grid>
+
+            <Grid size={{ xs: 12, md: 6 }}>
+              <TextField
+                label="Lodging End Date"
+                type="date"
+                value={formData.lodgingEndDate}
+                onChange={handleChange('lodgingEndDate')}
+                error={!!errors.lodgingEndDate}
+                helperText={errors.lodgingEndDate || 'End date of temporary lodging'}
+                fullWidth
+                InputLabelProps={{
+                  shrink: true,
+                }}
+                inputProps={{
+                  min: formData.lodgingStartDate, // End date must be after start date
+                }}
+              />
+            </Grid>
+          </>
+        )}
+
         {/* Employment Information Section */}
         <Grid size={{ xs: 12 }}>
           <Typography variant="subtitle1" gutterBottom sx={{ mt: 3, mb: 1, fontWeight: 600 }}>

@@ -39,7 +39,9 @@ export interface Helper {
   outstandingLoan: number;
   employmentStartDate: string;
   pt: string;
-  transferStatus: TransferStatus
+  transferStatus: TransferStatus;
+  lodgingStartDate?: string;  // New optional field
+  lodgingEndDate?: string;
 }
 
 export interface NewHelper {
@@ -51,7 +53,9 @@ export interface NewHelper {
   outstandingLoan: number;
   employmentStartDate: string;
   pt: string;
-  transferStatus: TransferStatus
+  transferStatus: TransferStatus;
+  lodgingStartDate?: string;  // New optional field
+  lodgingEndDate?: string;
 }
 
 // Incident Types

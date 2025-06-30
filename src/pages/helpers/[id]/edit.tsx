@@ -36,7 +36,9 @@ interface HelperProp {
   outstandingLoan: number;
   employmentStartDate: string;
   pt: string;
-  transferStatus: TransferStatus
+  transferStatus: TransferStatus;
+  lodgingStartDate?: string;
+  lodgingEndDate?: string;
 }
 
 interface FormData {
@@ -48,7 +50,9 @@ interface FormData {
   outstandingLoan: string;
   employmentStartDate: string;
   pt: string;
-  transferStatus: TransferStatus
+  transferStatus: TransferStatus;
+  lodgingStartDate: string;
+  lodgingEndDate: string;
 }
 
 interface Props {
@@ -68,7 +72,9 @@ const EditHelperPage: NextPage<Props> = ({ helper }) => {
     outstandingLoan: String(helper.outstandingLoan),
     employmentStartDate: helper.employmentStartDate,
     pt: helper.pt,
-    transferStatus: helper.transferStatus
+    transferStatus: helper.transferStatus,
+    lodgingStartDate: helper.lodgingStartDate || '',
+    lodgingEndDate: helper.lodgingEndDate || '',
   });
   const [errors, setErrors] = useState<Partial<FormData>>({});
   const [submitError, setSubmitError] = useState('');
@@ -85,6 +91,15 @@ const EditHelperPage: NextPage<Props> = ({ helper }) => {
     if (!form.employmentStartDate) errs.employmentStartDate = 'Employment start date is required';
     if (!form.pt.trim()) errs.pt = 'PT/Agency is required';
     if (!form.transferStatus) errs.transferStatus = 'New';
+
+    // Validate lodging dates if provided
+    if (form.lodgingStartDate && form.lodgingEndDate) {
+      const startDate = new Date(form.lodgingStartDate);
+      const endDate = new Date(form.lodgingEndDate);
+      if (endDate < startDate) {
+        errs.lodgingEndDate = 'End date must be after start date';
+      }
+    }
 
     // Validate employment start date is not in the future
     if (form.employmentStartDate) {

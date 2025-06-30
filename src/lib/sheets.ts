@@ -36,6 +36,8 @@ export type RawHelperRow = {
   employmentStartDate: string;
   pt: string;
   transferStatus: string;
+  lodgingStartDate: string;
+  lodgingEndDate: string;
 };
 
 export type HelperRow =
@@ -52,6 +54,8 @@ export interface NewHelper {
   employmentStartDate: string;
   pt: string;
   transferStatus: TransferStatus;
+  lodgingStartDate: string;
+  lodgingEndDate: string;
 }
 
 // 4) Fetch & type rows as intersection so TS knows about column props
@@ -85,6 +89,8 @@ export async function addHelper(helper: NewHelper): Promise<GoogleSpreadsheetRow
     employmentStartDate: helper.employmentStartDate,
     pt: helper.pt,
     transferStatus: helper.transferStatus,
+    lodgingStartDate: helper.lodgingStartDate,
+    lodgingEndDate: helper.lodgingEndDate,
   });
 
   // Invalidate related caches

@@ -13,6 +13,8 @@ export interface NewHelperFormData {
   employmentStartDate: string;
   pt: string;
   transferStatus: string;
+  lodgingStartDate?: string;  // New optional field
+  lodgingEndDate?: string;
   
   // Incident fields
   incidentDate: string;
@@ -41,6 +43,8 @@ export function useNewHelperForm(initialReportedBy: string) {
     employmentStartDate: '',
     pt: '',
     transferStatus: '',
+    lodgingStartDate: '',  // New optional field
+    lodgingEndDate: '',
     
     // Incident fields
     incidentDate: new Date().toISOString().split('T')[0],
